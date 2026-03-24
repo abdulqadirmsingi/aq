@@ -177,7 +177,11 @@ class DataPoint(Base):
                 metric_id::text || '|' ||
                 source_id::text || '|' ||
                 coalesce(location_id::text, 'global') || '|' ||
-                recorded_at::text || '|' ||
+                extract(
+                    epoch from (
+                        recorded_at - timestamptz '1970-01-01 00:00:00+00'
+                    )
+                )::text || '|' ||
                 coalesce(external_reference, '')
             )
             """,
