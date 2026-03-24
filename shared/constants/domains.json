@@ -1,0 +1,9 @@
+{
+  "domains": [
+    { "id": "energy", "label": "Energy", "description": "Fuel, gas, electricity prices" },
+    { "id": "money", "label": "Money", "description": "Exchange rates, inflation, stocks" },
+    { "id": "living_cost", "label": "Living Cost", "description": "Rent, land prices" },
+    { "id": "medicine", "label": "Medicine", "description": "Drug and pharmaceutical prices" },
+    { "id": "hr", "label": "Human Resources", "description": "Salaries, job market trends" }
+  ]
+}
