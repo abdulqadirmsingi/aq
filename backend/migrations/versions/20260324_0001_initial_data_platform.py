@@ -33,7 +33,9 @@ branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
-source_type_enum = sa.Enum(
+# postgresql.ENUM + create_type=False: generic sa.Enum ignores create_type, so PG
+# would still emit CREATE TYPE on create_table after our explicit .create() calls.
+source_type_enum = postgresql.ENUM(
     "government",
     "private",
     "api",
@@ -41,15 +43,17 @@ source_type_enum = sa.Enum(
     "partner",
     "other",
     name="source_type_enum",
+    create_type=False,
 )
-metric_value_type_enum = sa.Enum(
+metric_value_type_enum = postgresql.ENUM(
     "numeric",
     "text",
     "boolean",
     "json",
     name="metric_value_type_enum",
+    create_type=False,
 )
-metric_frequency_enum = sa.Enum(
+metric_frequency_enum = postgresql.ENUM(
     "real_time",
     "hourly",
     "daily",
@@ -59,8 +63,9 @@ metric_frequency_enum = sa.Enum(
     "yearly",
     "ad_hoc",
     name="metric_frequency_enum",
+    create_type=False,
 )
-location_level_enum = sa.Enum(
+location_level_enum = postgresql.ENUM(
     "country",
     "region",
     "city",
@@ -68,8 +73,9 @@ location_level_enum = sa.Enum(
     "ward",
     "other",
     name="location_level_enum",
+    create_type=False,
 )
-scraper_run_status_enum = sa.Enum(
+scraper_run_status_enum = postgresql.ENUM(
     "pending",
     "running",
     "succeeded",
@@ -77,6 +83,7 @@ scraper_run_status_enum = sa.Enum(
     "partial",
     "cancelled",
     name="scraper_run_status_enum",
+    create_type=False,
 )
 
 
