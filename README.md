@@ -2,24 +2,8 @@
 
 A modular, scalable data intelligence platform that collects, stores, and serves time-series data across multiple domains.
 
-## Domains
-
-| Domain        | Examples                              |
-| ------------- | ------------------------------------- |
-| Energy        | Fuel, gas, electricity prices         |
-| Money         | Exchange rates, inflation, stocks     |
-| Living Cost   | Rent, land prices                     |
-| Medicine      | Drug / pharmaceutical prices          |
-| HR            | Salaries, job market trends           |
-
-## Tech Stack
-
-| Layer      | Technology                                    |
-| ---------- | --------------------------------------------- |
-| Backend    | FastAPI, SQLAlchemy 2.0 (async), PostgreSQL   |
-| Frontend   | Next.js 15 (App Router), TypeScript, Tailwind |
-| Scrapers   | Python, Celery, Redis                         |
-| Infra      | Docker Compose, Nginx, GitHub Actions         |
+//running backend 
+uvicorn app.main:app --reload
 
 ## Quick Start
 
