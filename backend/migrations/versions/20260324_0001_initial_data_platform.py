@@ -3,13 +3,28 @@
 Revision ID: 20260324_0001
 Revises:
 Create Date: 2026-03-24 00:01:00
+
+data_points is RANGE-partitioned monthly on recorded_at (child tables data_points_YYYY_MM),
+plus data_points_default for rows outside the pre-created window. Primary key is (id, recorded_at)
+as required by PostgreSQL for partitioned unique constraints.
+
+If you already applied an older version of this revision (non-partitioned data_points), reset the
+database or downgrade and re-run migrations — this file is not an in-place upgrade path.
 """
 
 from collections.abc import Sequence
+import sys
+from pathlib import Path
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+_backend_root = Path(__file__).resolve().parents[2]
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
+
+from migrations.partition_monthly import create_monthly_partitions, default_partition_range
 
 # revision identifiers, used by Alembic.
 revision: str = "20260324_0001"
@@ -345,142 +360,75 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_scraper_runs")),
     )
 
-    op.create_table(
-        "data_points",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("metric_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("source_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("location_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("scraper_run_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("supersedes_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("external_reference", sa.String(length=128), nullable=True),
-        sa.Column("unit_override", sa.String(length=32), nullable=True),
-        sa.Column(
-            "value_type",
-            metric_value_type_enum,
-            nullable=False,
-            server_default=sa.text("'numeric'"),
-        ),
-        sa.Column("value_numeric", sa.Numeric(24, 8), nullable=True),
-        sa.Column("value_text", sa.Text(), nullable=True),
-        sa.Column("value_boolean", sa.Boolean(), nullable=True),
-        sa.Column(
-            "extra_data",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=False,
-            server_default=sa.text("'{}'::jsonb"),
-        ),
-        sa.Column(
-            "ingestion_metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=False,
-            server_default=sa.text("'{}'::jsonb"),
-        ),
-        sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
-        sa.Column(
-            "version_no",
-            sa.Integer(),
-            nullable=False,
-            server_default=sa.text("1"),
-        ),
-        sa.Column(
-            "is_current",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("true"),
-        ),
-        sa.Column(
-            "is_valid",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("true"),
-        ),
-        sa.Column(
-            "confidence_score",
-            sa.Numeric(5, 4),
-            nullable=False,
-            server_default=sa.text("1.0000"),
-        ),
-        sa.Column(
-            "dedupe_key",
-            sa.Text(),
-            sa.Computed(
-                """
-                md5(
-                    metric_id::text || '|' ||
-                    source_id::text || '|' ||
-                    coalesce(location_id::text, 'global') || '|' ||
-                    recorded_at::text || '|' ||
-                    coalesce(external_reference, '')
-                )
-                """,
-                persisted=True,
-            ),
-            nullable=False,
-        ),
-        sa.CheckConstraint(
+    # Partitioned by recorded_at (monthly child tables). PK must include partition key.
+    op.execute(
+        sa.text(
             """
-            (CASE WHEN value_numeric IS NOT NULL THEN 1 ELSE 0 END) +
-            (CASE WHEN value_text IS NOT NULL THEN 1 ELSE 0 END) +
-            (CASE WHEN value_boolean IS NOT NULL THEN 1 ELSE 0 END) <= 1
-            """,
-            name=op.f("ck_data_points_single_scalar_value"),
-        ),
-        sa.CheckConstraint(
+            CREATE TABLE data_points (
+                id UUID NOT NULL,
+                metric_id UUID NOT NULL,
+                source_id UUID NOT NULL,
+                location_id UUID,
+                scraper_run_id UUID,
+                supersedes_id UUID,
+                supersedes_recorded_at TIMESTAMPTZ,
+                external_reference VARCHAR(128),
+                unit_override VARCHAR(32),
+                value_type metric_value_type_enum NOT NULL DEFAULT 'numeric',
+                value_numeric NUMERIC(24, 8),
+                value_text TEXT,
+                value_boolean BOOLEAN,
+                extra_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                ingestion_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                recorded_at TIMESTAMPTZ NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                version_no INTEGER NOT NULL DEFAULT 1,
+                is_current BOOLEAN NOT NULL DEFAULT true,
+                is_valid BOOLEAN NOT NULL DEFAULT true,
+                confidence_score NUMERIC(5, 4) NOT NULL DEFAULT 1.0000,
+                dedupe_key TEXT GENERATED ALWAYS AS (
+                    md5(
+                        metric_id::text || '|' ||
+                        source_id::text || '|' ||
+                        coalesce(location_id::text, 'global') || '|' ||
+                        recorded_at::text || '|' ||
+                        coalesce(external_reference, '')
+                    )
+                ) STORED,
+                PRIMARY KEY (id, recorded_at),
+                CONSTRAINT ck_data_points_single_scalar_value CHECK (
+                    (CASE WHEN value_numeric IS NOT NULL THEN 1 ELSE 0 END) +
+                    (CASE WHEN value_text IS NOT NULL THEN 1 ELSE 0 END) +
+                    (CASE WHEN value_boolean IS NOT NULL THEN 1 ELSE 0 END) <= 1
+                ),
+                CONSTRAINT ck_data_points_has_payload CHECK (
+                    value_numeric IS NOT NULL OR
+                    value_text IS NOT NULL OR
+                    value_boolean IS NOT NULL OR
+                    extra_data <> '{}'::jsonb
+                ),
+                CONSTRAINT ck_data_points_confidence_score_range CHECK (
+                    confidence_score >= 0 AND confidence_score <= 1
+                ),
+                CONSTRAINT ck_data_points_version_no_positive CHECK (version_no >= 1),
+                CONSTRAINT fk_data_points_location_id_locations
+                    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL,
+                CONSTRAINT fk_data_points_metric_id_metrics
+                    FOREIGN KEY (metric_id) REFERENCES metrics (id) ON DELETE RESTRICT,
+                CONSTRAINT fk_data_points_scraper_run_id_scraper_runs
+                    FOREIGN KEY (scraper_run_id) REFERENCES scraper_runs (id) ON DELETE SET NULL,
+                CONSTRAINT fk_data_points_source_id_sources
+                    FOREIGN KEY (source_id) REFERENCES sources (id) ON DELETE RESTRICT,
+                CONSTRAINT fk_data_points_supersedes_id_data_points
+                    FOREIGN KEY (supersedes_id, supersedes_recorded_at)
+                    REFERENCES data_points (id, recorded_at) ON DELETE SET NULL
+            ) PARTITION BY RANGE (recorded_at)
             """
-            value_numeric IS NOT NULL OR
-            value_text IS NOT NULL OR
-            value_boolean IS NOT NULL OR
-            extra_data <> '{}'::jsonb
-            """,
-            name=op.f("ck_data_points_has_payload"),
-        ),
-        sa.CheckConstraint(
-            "confidence_score >= 0 AND confidence_score <= 1",
-            name=op.f("ck_data_points_confidence_score_range"),
-        ),
-        sa.CheckConstraint(
-            "version_no >= 1",
-            name=op.f("ck_data_points_version_no_positive"),
-        ),
-        sa.ForeignKeyConstraint(
-            ["location_id"],
-            ["locations.id"],
-            name=op.f("fk_data_points_location_id_locations"),
-            ondelete="SET NULL",
-        ),
-        sa.ForeignKeyConstraint(
-            ["metric_id"],
-            ["metrics.id"],
-            name=op.f("fk_data_points_metric_id_metrics"),
-            ondelete="RESTRICT",
-        ),
-        sa.ForeignKeyConstraint(
-            ["scraper_run_id"],
-            ["scraper_runs.id"],
-            name=op.f("fk_data_points_scraper_run_id_scraper_runs"),
-            ondelete="SET NULL",
-        ),
-        sa.ForeignKeyConstraint(
-            ["source_id"],
-            ["sources.id"],
-            name=op.f("fk_data_points_source_id_sources"),
-            ondelete="RESTRICT",
-        ),
-        sa.ForeignKeyConstraint(
-            ["supersedes_id"],
-            ["data_points.id"],
-            name=op.f("fk_data_points_supersedes_id_data_points"),
-            ondelete="SET NULL",
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_data_points")),
+        )
     )
+
+    first_m, last_m = default_partition_range()
+    create_monthly_partitions(first_month=first_m, last_month=last_m)
     op.create_index(
         "ix_data_points_metric_recorded_at",
         "data_points",
@@ -529,7 +477,7 @@ def upgrade() -> None:
     op.create_index(
         "uq_data_points_dedupe_key_current",
         "data_points",
-        ["dedupe_key"],
+        ["dedupe_key", "recorded_at"],
         unique=True,
         postgresql_where=sa.text("is_current"),
     )
@@ -539,6 +487,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("scraper_run_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("data_point_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("data_point_recorded_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("level", sa.String(length=16), nullable=False),
         sa.Column("event_type", sa.String(length=64), nullable=False),
         sa.Column("message", sa.Text(), nullable=False),
@@ -555,9 +504,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.ForeignKeyConstraint(
-            ["data_point_id"],
-            ["data_points.id"],
-            name=op.f("fk_ingestion_logs_data_point_id_data_points"),
+            ["data_point_id", "data_point_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            name=op.f("fk_ingestion_logs_data_point_data_points"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
@@ -579,6 +528,7 @@ def upgrade() -> None:
         "energy_details",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("data_point_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("data_point_recorded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("energy_type", sa.String(length=32), nullable=False),
         sa.Column("fuel_grade", sa.String(length=32), nullable=True),
         sa.Column("tariff_code", sa.String(length=32), nullable=True),
@@ -597,13 +547,17 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.ForeignKeyConstraint(
-            ["data_point_id"],
-            ["data_points.id"],
-            name=op.f("fk_energy_details_data_point_id_data_points"),
+            ["data_point_id", "data_point_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            name=op.f("fk_energy_details_data_point_data_points"),
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_energy_details")),
-        sa.UniqueConstraint("data_point_id", name=op.f("uq_energy_details_data_point_id")),
+        sa.UniqueConstraint(
+            "data_point_id",
+            "data_point_recorded_at",
+            name=op.f("uq_energy_details_data_point"),
+        ),
     )
     op.create_index(
         "ix_energy_details_energy_type",
@@ -628,6 +582,7 @@ def upgrade() -> None:
         "exchange_rate_details",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("data_point_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("data_point_recorded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("base_currency", sa.String(length=3), nullable=False),
         sa.Column("quote_currency", sa.String(length=3), nullable=False),
         sa.Column("rate_type", sa.String(length=32), nullable=True),
@@ -646,15 +601,16 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.ForeignKeyConstraint(
-            ["data_point_id"],
-            ["data_points.id"],
-            name=op.f("fk_exchange_rate_details_data_point_id_data_points"),
+            ["data_point_id", "data_point_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            name=op.f("fk_exchange_rate_details_data_point_data_points"),
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_exchange_rate_details")),
         sa.UniqueConstraint(
             "data_point_id",
-            name=op.f("uq_exchange_rate_details_data_point_id"),
+            "data_point_recorded_at",
+            name=op.f("uq_exchange_rate_details_data_point"),
         ),
     )
     op.create_index(
@@ -674,6 +630,7 @@ def upgrade() -> None:
         "salary_details",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("data_point_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("data_point_recorded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("role_title", sa.String(length=120), nullable=True),
         sa.Column("seniority_level", sa.String(length=32), nullable=True),
         sa.Column("employment_type", sa.String(length=32), nullable=True),
@@ -693,13 +650,17 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.ForeignKeyConstraint(
-            ["data_point_id"],
-            ["data_points.id"],
-            name=op.f("fk_salary_details_data_point_id_data_points"),
+            ["data_point_id", "data_point_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            name=op.f("fk_salary_details_data_point_data_points"),
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_salary_details")),
-        sa.UniqueConstraint("data_point_id", name=op.f("uq_salary_details_data_point_id")),
+        sa.UniqueConstraint(
+            "data_point_id",
+            "data_point_recorded_at",
+            name=op.f("uq_salary_details_data_point"),
+        ),
     )
     op.create_index(
         "ix_salary_details_role_title",

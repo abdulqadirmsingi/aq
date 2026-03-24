@@ -4,8 +4,19 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, func, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -74,6 +85,11 @@ class ScraperRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class IngestionLog(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "ingestion_logs"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["data_point_id", "data_point_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            ondelete="SET NULL",
+        ),
         Index("ix_ingestion_logs_scraper_run_created_at", "scraper_run_id", "created_at"),
     )
 
@@ -81,8 +97,9 @@ class IngestionLog(UUIDPrimaryKeyMixin, Base):
         ForeignKey("scraper_runs.id", ondelete="CASCADE"),
         nullable=False,
     )
-    data_point_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("data_points.id", ondelete="SET NULL"),
+    data_point_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    data_point_recorded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
     )
     level: Mapped[str] = mapped_column(String(16), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)

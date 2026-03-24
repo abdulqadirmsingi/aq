@@ -12,26 +12,35 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
+    PrimaryKeyConstraint,
     String,
     Text,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.mixins import UUIDPrimaryKeyMixin
 
 from .enums import MetricValueType
 
 
-class DataPoint(UUIDPrimaryKeyMixin, Base):
+class DataPoint(Base):
+    """Time-series facts; partitioned monthly on recorded_at (PostgreSQL)."""
+
     __tablename__ = "data_points"
     __table_args__ = (
+        PrimaryKeyConstraint("id", "recorded_at"),
+        ForeignKeyConstraint(
+            ["supersedes_id", "supersedes_recorded_at"],
+            ["data_points.id", "data_points.recorded_at"],
+            ondelete="SET NULL",
+        ),
         CheckConstraint(
             """
             (CASE WHEN value_numeric IS NOT NULL THEN 1 ELSE 0 END) +
@@ -73,27 +82,35 @@ class DataPoint(UUIDPrimaryKeyMixin, Base):
         Index(
             "uq_data_points_dedupe_key_current",
             "dedupe_key",
+            "recorded_at",
             unique=True,
             postgresql_where=text("is_current"),
         ),
+        {"postgresql_partition_by": "RANGE (recorded_at)"},
     )
 
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     metric_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("metrics.id", ondelete="RESTRICT"),
         nullable=False,
     )
     source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("sources.id", ondelete="RESTRICT"),
         nullable=False,
     )
     location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("locations.id", ondelete="SET NULL"),
     )
     scraper_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("scraper_runs.id", ondelete="SET NULL"),
     )
-    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("data_points.id", ondelete="SET NULL"),
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    supersedes_recorded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
     )
     external_reference: Mapped[str | None] = mapped_column(String(128))
     unit_override: Mapped[str | None] = mapped_column(String(32))
@@ -173,15 +190,6 @@ class DataPoint(UUIDPrimaryKeyMixin, Base):
     source: Mapped[Source] = relationship(back_populates="data_points")
     location: Mapped[Location | None] = relationship(back_populates="data_points")
     scraper_run: Mapped[ScraperRun | None] = relationship(back_populates="data_points")
-    supersedes: Mapped[DataPoint | None] = relationship(
-        foreign_keys=[supersedes_id],
-        remote_side="DataPoint.id",
-        back_populates="corrections",
-    )
-    corrections: Mapped[list[DataPoint]] = relationship(
-        back_populates="supersedes",
-        foreign_keys=[supersedes_id],
-    )
     ingestion_logs: Mapped[list[IngestionLog]] = relationship(back_populates="data_point")
     energy_detail: Mapped[EnergyDetail | None] = relationship(back_populates="data_point")
     exchange_rate_detail: Mapped[ExchangeRateDetail | None] = relationship(
