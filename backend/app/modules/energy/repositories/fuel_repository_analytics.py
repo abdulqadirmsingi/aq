@@ -145,9 +145,10 @@ class FuelAnalyticsRepositoryMixin:
         year: int,
         fuel_type: str | None = None,
     ) -> list[FuelMonthlyTrendRecord]:
+        month_start_expr = cast(func.date_trunc("month", DataPoint.recorded_at), Date)
         stmt = (
             select(
-                cast(func.date_trunc("month", DataPoint.recorded_at), Date).label("month_start"),
+                month_start_expr.label("month_start"),
                 EnergyDetail.fuel_grade.label("fuel_type"),
                 func.avg(DataPoint.value_numeric).label("avg_price"),
                 func.min(DataPoint.value_numeric).label("min_price"),
@@ -161,25 +162,26 @@ class FuelAnalyticsRepositoryMixin:
             stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
         result = await self._session.execute(
             stmt.group_by(
-                cast(func.date_trunc("month", DataPoint.recorded_at), Date),
+                month_start_expr,
                 EnergyDetail.fuel_grade,
             ).order_by(
-                cast(func.date_trunc("month", DataPoint.recorded_at), Date).asc(),
+                month_start_expr.asc(),
                 EnergyDetail.fuel_grade.asc(),
             )
         )
         return [FuelMonthlyTrendRecord(**row._mapping) for row in result]
 
     async def get_available_months(self) -> list[FuelAvailableMonthRecord]:
+        month_start_expr = cast(func.date_trunc("month", DataPoint.recorded_at), Date)
         stmt = (
             select(
-                cast(func.date_trunc("month", DataPoint.recorded_at), Date).label("month_start"),
+                month_start_expr.label("month_start"),
                 func.count(DataPoint.id).label("observation_count"),
                 func.count(func.distinct(DataPoint.location_id)).label("locations_count"),
             )
             .select_from(build_base_from_clause())
-            .group_by(cast(func.date_trunc("month", DataPoint.recorded_at), Date))
-            .order_by(cast(func.date_trunc("month", DataPoint.recorded_at), Date).desc())
+            .group_by(month_start_expr)
+            .order_by(month_start_expr.desc())
         )
         result = await self._session.execute(stmt)
         return [FuelAvailableMonthRecord(**row._mapping) for row in result]

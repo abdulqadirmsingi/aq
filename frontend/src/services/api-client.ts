@@ -19,7 +19,9 @@ export class ApiClientError extends Error {
 }
 
 export function buildApiUrl(path: string, query?: Record<string, QueryValue>): string {
-  const url = new URL(path, API_BASE_URL);
+  const normalizedBaseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL : `${API_BASE_URL}/`;
+  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  const url = new URL(normalizedPath, normalizedBaseUrl);
 
   if (!query) {
     return url.toString();

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
@@ -153,11 +154,12 @@ class FuelMonitorRepository:
 
     @staticmethod
     def _to_run_record(row: Any) -> FuelRunRecord:
+        status = row["status"]
         return FuelRunRecord(
             id=row["id"],
             scraper_name=row["scraper_name"],
             trigger_type=row["trigger_type"],
-            status=str(row["status"]),
+            status=status.value if isinstance(status, Enum) else str(status),
             category_slug=row["category_slug"],
             source_name=row["source_name"],
             started_at=row["started_at"],
