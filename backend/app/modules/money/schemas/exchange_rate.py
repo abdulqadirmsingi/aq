@@ -60,3 +60,38 @@ class ExchangeRateLatestComparisonRead(BaseModel):
     channel: str | None = None
     cash_note_band: str | None = None
     items: list[ExchangeRateComparisonRead]
+
+
+class ExchangeRateRecommendationCandidateRead(BaseModel):
+    source_slug: str
+    source_name: str
+    snapshot_date: date
+    snapshot_month_label: str
+    instrument_code: str
+    instrument_name: str
+    quote_code: str
+    customer_action: str
+    relevant_rate: Decimal
+    rate_label: str
+    buy_rate: Decimal | None
+    sell_rate: Decimal | None
+    mean_rate: Decimal | None
+    source_effective_date: date | None
+    source_last_updated_at: datetime | None
+    market_scope: str
+    channel: str | None
+    cash_note_band: str | None
+    created_at: datetime
+    rank: int
+    difference_from_best: Decimal | None
+    difference_from_bot_mean: Decimal | None
+
+
+class ExchangeRateRecommendationRead(BaseModel):
+    instrument_code: str
+    customer_action: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    best_option: ExchangeRateRecommendationCandidateRead | None
+    benchmark: ExchangeRateComparisonRead | None
+    compared_options: list[ExchangeRateRecommendationCandidateRead]

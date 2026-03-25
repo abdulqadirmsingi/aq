@@ -16,6 +16,7 @@ from app.modules.money.schemas.exchange_rate import (
     BotExchangeRateFiltersRead,
     BotExchangeRateRead,
     ExchangeRateLatestComparisonRead,
+    ExchangeRateRecommendationRead,
 )
 from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
@@ -79,4 +80,25 @@ async def get_latest_exchange_rate_comparison(
         instrument_code=instrument_code,
         channel=channel,
         cash_note_band=cash_note_band,
+    )
+
+
+@router.get(
+    "/exchange-rates/recommendation",
+    response_model=ExchangeRateRecommendationRead,
+)
+async def get_exchange_rate_recommendation(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    customer_action: Annotated[str, Query(pattern="^(buy|sell)$")],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+    include_bot_as_option: Annotated[bool, Query()] = False,
+) -> ExchangeRateRecommendationRead:
+    return await _exchange_rate_service(db).get_recommendation(
+        instrument_code=instrument_code,
+        customer_action=customer_action,
+        channel=channel,
+        cash_note_band=cash_note_band,
+        include_bot_as_option=include_bot_as_option,
     )

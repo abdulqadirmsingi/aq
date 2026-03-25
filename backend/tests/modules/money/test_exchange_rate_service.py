@@ -182,3 +182,46 @@ async def test_get_latest_comparison_can_return_channel_specific_rows() -> None:
     assert comparison.cash_note_band == "notes_1_20"
     assert len(comparison.items) == 1
     assert comparison.items[0].source_slug == "nmb_daily_exchange_rates"
+
+
+async def test_get_recommendation_prefers_lowest_sell_for_buy_action() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    recommendation = await service.get_recommendation(
+        instrument_code="usd",
+        customer_action="buy",
+    )
+
+    assert recommendation.best_option is not None
+    assert recommendation.best_option.source_slug == "crdb_forex"
+    assert recommendation.best_option.relevant_rate == Decimal("2615")
+    assert recommendation.benchmark is not None
+    assert recommendation.benchmark.source_slug == "bot_exchange_rates"
+
+
+async def test_get_recommendation_prefers_highest_buy_for_sell_action() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    recommendation = await service.get_recommendation(
+        instrument_code="usd",
+        customer_action="sell",
+    )
+
+    assert recommendation.best_option is not None
+    assert recommendation.best_option.source_slug == "crdb_forex"
+    assert recommendation.best_option.relevant_rate == Decimal("2535")
+
+
+async def test_get_recommendation_can_target_nmb_cash_band() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    recommendation = await service.get_recommendation(
+        instrument_code="usd",
+        customer_action="buy",
+        channel="cash",
+        cash_note_band="notes_1_20",
+    )
+
+    assert recommendation.best_option is not None
+    assert recommendation.best_option.source_slug == "nmb_daily_exchange_rates"
+    assert recommendation.best_option.cash_note_band == "notes_1_20"
