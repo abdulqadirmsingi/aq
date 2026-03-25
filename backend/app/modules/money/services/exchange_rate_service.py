@@ -98,12 +98,18 @@ class ExchangeRateService:
         self,
         *,
         instrument_code: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
     ) -> ExchangeRateLatestComparisonRead:
         rows = await self._repository.list_latest_source_comparison(
-            instrument_code=instrument_code
+            instrument_code=instrument_code,
+            channel=channel,
+            cash_note_band=cash_note_band,
         )
         return ExchangeRateLatestComparisonRead(
             instrument_code=instrument_code.upper(),
+            channel=channel,
+            cash_note_band=cash_note_band,
             items=[
                 ExchangeRateComparisonRead(
                     source_slug=row.source_slug,
@@ -120,6 +126,7 @@ class ExchangeRateService:
                     source_last_updated_at=row.source_last_updated_at,
                     market_scope=row.market_scope,
                     channel=row.channel,
+                    cash_note_band=row.cash_note_band,
                     created_at=row.created_at,
                 )
                 for row in rows

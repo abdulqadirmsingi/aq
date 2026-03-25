@@ -49,6 +49,7 @@ class ExchangeRateComparisonRecord:
     source_last_updated_at: datetime | None
     market_scope: str
     channel: str | None
+    cash_note_band: str | None
     created_at: datetime
 
 
@@ -245,7 +246,13 @@ class ExchangeRateRepository:
         self,
         *,
         instrument_code: str,
-        source_slugs: tuple[str, ...] = ("bot_exchange_rates", "crdb_forex"),
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+        source_slugs: tuple[str, ...] = (
+            "bot_exchange_rates",
+            "crdb_forex",
+            "nmb_daily_exchange_rates",
+        ),
     ) -> list[ExchangeRateComparisonRecord]:
         records: list[ExchangeRateComparisonRecord] = []
         for source_slug in source_slugs:
@@ -257,6 +264,8 @@ class ExchangeRateRepository:
                     source_slug=source_slug,
                     instrument_code=instrument_code,
                     snapshot_date=snapshot_date,
+                    channel=channel,
+                    cash_note_band=cash_note_band,
                 )
             )
             records.extend(
@@ -285,8 +294,10 @@ class ExchangeRateRepository:
         source_slug: str,
         instrument_code: str,
         snapshot_date: date,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
     ):
-        return (
+        stmt = (
             select(
                 Source.slug.label("source_slug"),
                 Source.name.label("source_name"),
@@ -311,6 +322,7 @@ class ExchangeRateRepository:
                 ),
                 func.max(ExchangeRateDetail.market_scope).label("market_scope"),
                 func.max(ExchangeRateDetail.channel).label("channel"),
+                func.max(ExchangeRateDetail.cash_note_band).label("cash_note_band"),
                 func.max(DataPoint.created_at).label("created_at"),
             )
             .select_from(DataPoint)
@@ -334,3 +346,8 @@ class ExchangeRateRepository:
             )
             .order_by(Source.slug.asc())
         )
+        if channel is not None:
+            stmt = stmt.where(ExchangeRateDetail.channel == channel)
+        if cash_note_band is not None:
+            stmt = stmt.where(ExchangeRateDetail.cash_note_band == cash_note_band)
+        return stmt

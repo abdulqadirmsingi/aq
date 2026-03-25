@@ -72,7 +72,11 @@ async def get_bot_exchange_rate_filters(
 async def get_latest_exchange_rate_comparison(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
 ) -> ExchangeRateLatestComparisonRead:
     return await _exchange_rate_service(db).get_latest_comparison(
-        instrument_code=instrument_code
+        instrument_code=instrument_code,
+        channel=channel,
+        cash_note_band=cash_note_band,
     )

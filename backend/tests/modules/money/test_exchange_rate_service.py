@@ -10,6 +10,78 @@ from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
 
 class _FakeExchangeRateRepository:
+    def __init__(self) -> None:
+        self._comparison_rows = [
+            ExchangeRateComparisonRecord(
+                source_slug="bot_exchange_rates",
+                source_name="Bank of Tanzania Exchange Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="USD",
+                quote_code="TZS",
+                buy_rate=Decimal("2557.8218"),
+                sell_rate=Decimal("2583.4000"),
+                mean_rate=Decimal("2570.6109"),
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=None,
+                market_scope="official_reference",
+                channel=None,
+                cash_note_band=None,
+                created_at=datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
+            ),
+            ExchangeRateComparisonRecord(
+                source_slug="crdb_forex",
+                source_name="CRDB Forex Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="US DOLLAR",
+                quote_code="TZS",
+                buy_rate=Decimal("2535"),
+                sell_rate=Decimal("2615"),
+                mean_rate=None,
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
+                market_scope="commercial_bank",
+                channel="counter",
+                cash_note_band=None,
+                created_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
+            ),
+            ExchangeRateComparisonRecord(
+                source_slug="nmb_daily_exchange_rates",
+                source_name="NMB Daily Exchange Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="US Dollar",
+                quote_code="TZS",
+                buy_rate=Decimal("2535"),
+                sell_rate=Decimal("2615"),
+                mean_rate=None,
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=None,
+                market_scope="commercial_bank",
+                channel="non_cash",
+                cash_note_band=None,
+                created_at=datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
+            ),
+            ExchangeRateComparisonRecord(
+                source_slug="nmb_daily_exchange_rates",
+                source_name="NMB Daily Exchange Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="US Dollar",
+                quote_code="TZS",
+                buy_rate=Decimal("2530"),
+                sell_rate=Decimal("2620"),
+                mean_rate=None,
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=None,
+                market_scope="commercial_bank",
+                channel="cash",
+                cash_note_band="notes_1_20",
+                created_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
+            ),
+        ]
+
     async def get_latest_bot_snapshot_date(self) -> date | None:
         return date(2026, 3, 25)
 
@@ -48,42 +120,16 @@ class _FakeExchangeRateRepository:
 
     async def list_latest_source_comparison(
         self,
-        **_: object,
+        **kwargs: object,
     ) -> list[ExchangeRateComparisonRecord]:
-        return [
-            ExchangeRateComparisonRecord(
-                source_slug="bot_exchange_rates",
-                source_name="Bank of Tanzania Exchange Rates",
-                snapshot_date=date(2026, 3, 25),
-                instrument_code="USD",
-                instrument_name="USD",
-                quote_code="TZS",
-                buy_rate=Decimal("2557.8218"),
-                sell_rate=Decimal("2583.4000"),
-                mean_rate=Decimal("2570.6109"),
-                source_effective_date=date(2026, 3, 25),
-                source_last_updated_at=None,
-                market_scope="official_reference",
-                channel=None,
-                created_at=datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
-            ),
-            ExchangeRateComparisonRecord(
-                source_slug="crdb_forex",
-                source_name="CRDB Forex Rates",
-                snapshot_date=date(2026, 3, 25),
-                instrument_code="USD",
-                instrument_name="US DOLLAR",
-                quote_code="TZS",
-                buy_rate=Decimal("2535"),
-                sell_rate=Decimal("2615"),
-                mean_rate=None,
-                source_effective_date=date(2026, 3, 25),
-                source_last_updated_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
-                market_scope="commercial_bank",
-                channel="counter",
-                created_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
-            ),
-        ]
+        rows = self._comparison_rows
+        channel = kwargs.get("channel")
+        cash_note_band = kwargs.get("cash_note_band")
+        if channel is not None:
+            rows = [row for row in rows if row.channel == channel]
+        if cash_note_band is not None:
+            rows = [row for row in rows if row.cash_note_band == cash_note_band]
+        return rows
 
 
 async def test_list_bot_latest_maps_repository_rows() -> None:
@@ -116,6 +162,23 @@ async def test_get_latest_comparison_keeps_sources_separate() -> None:
     assert [item.source_slug for item in comparison.items] == [
         "bot_exchange_rates",
         "crdb_forex",
+        "nmb_daily_exchange_rates",
+        "nmb_daily_exchange_rates",
     ]
     assert comparison.items[0].market_scope == "official_reference"
     assert comparison.items[1].market_scope == "commercial_bank"
+
+
+async def test_get_latest_comparison_can_return_channel_specific_rows() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    comparison = await service.get_latest_comparison(
+        instrument_code="usd",
+        channel="cash",
+        cash_note_band="notes_1_20",
+    )
+
+    assert comparison.channel == "cash"
+    assert comparison.cash_note_band == "notes_1_20"
+    assert len(comparison.items) == 1
+    assert comparison.items[0].source_slug == "nmb_daily_exchange_rates"

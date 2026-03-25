@@ -51,9 +51,12 @@ class ExchangeRateComparisonRead(BaseModel):
     source_last_updated_at: datetime | None
     market_scope: str
     channel: str | None
+    cash_note_band: str | None
     created_at: datetime
 
 
 class ExchangeRateLatestComparisonRead(BaseModel):
     instrument_code: str
+    channel: str | None = None
+    cash_note_band: str | None = None
     items: list[ExchangeRateComparisonRead]
