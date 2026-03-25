@@ -104,8 +104,8 @@ def build_base_from_clause(parent_location: Any | None = None):
     )
     if parent_location is not None:
         base = base.outerjoin(
-            parent_location.__table__,
-            Location.parent_id == parent_location.__table__.c.id,
+            parent_location,
+            Location.parent_id == parent_location.id,
         )
     return base
 

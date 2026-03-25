@@ -1,7 +1,13 @@
+"use client";
+
 import { ROUTES } from "@/lib/constants";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { EwuraFuelFiltersRead } from "@/types/api";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
+import { useTransition } from "react";
+import { buildEnergyHref } from "../query";
 import type { EnergyQueryState } from "../types";
 
 interface EnergyFiltersBarProps {
@@ -9,8 +15,10 @@ interface EnergyFiltersBarProps {
   query: EnergyQueryState;
 }
 
-export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps) {
-  const t = await getTranslations();
+export function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps) {
+  const t = useTranslations();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const retailSnapshot = filters.retail_latest_snapshot_month_label ?? t("energy.notAvailable");
   const wholesaleSnapshot =
     filters.wholesale_latest_snapshot_month_label ?? t("energy.notAvailable");
@@ -31,6 +39,37 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
     historyMode === "wholesale"
       ? t("energy.wholesaleHistoryOnDemand")
       : t("energy.retailHistoryOnDemand");
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const fuelType = readString(formData.get("fuelType"));
+    const locationQuery = readString(formData.get("locationQuery"));
+    const selectedYear = readInt(formData.get(historyYearName));
+
+    const nextQuery: EnergyQueryState = {
+      ...query,
+      fuelType,
+      locationQuery,
+      retailLatestOffset: 0,
+      retailHistoryOffset: 0,
+      wholesaleLatestOffset: 0,
+      wholesaleHistoryOffset: 0,
+      rollupsOffset: 0,
+      retailHistoryYear: historyMode === "retail" ? selectedYear : undefined,
+      wholesaleHistoryYear: historyMode === "wholesale" ? selectedYear : undefined,
+    };
+
+    startTransition(() => {
+      router.replace(buildEnergyHref(nextQuery, query), { scroll: false });
+    });
+  }
+
+  function handleClear() {
+    startTransition(() => {
+      router.replace(ROUTES.energy, { scroll: false });
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -60,17 +99,9 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
         </div>
       </div>
       <form
-        action={ROUTES.energy}
-        method="get"
+        onSubmit={handleSubmit}
         className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] lg:grid-cols-[1.1fr_1.4fr_1fr_auto]"
       >
-        <input type="hidden" name="tab" value={query.activeTab} />
-        {historyMode === "wholesale" && query.retailHistoryYear ? (
-          <input type="hidden" name="retailHistoryYear" value={query.retailHistoryYear} />
-        ) : null}
-        {historyMode === "retail" && query.wholesaleHistoryYear ? (
-          <input type="hidden" name="wholesaleHistoryYear" value={query.wholesaleHistoryYear} />
-        ) : null}
         <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
           <span>{t("energy.fuelType")}</span>
           <select
@@ -114,18 +145,37 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
         <div className="flex items-end gap-3 lg:justify-end">
           <button
             type="submit"
-            className="border-[3px] border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
+            disabled={isPending}
+            className="border-[3px] border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white disabled:opacity-60"
           >
             {t("common.applyFilters")}
           </button>
-          <a
-            href={ROUTES.energy}
-            className="border-[3px] border-neutral-950 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-neutral-950"
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={isPending}
+            className="border-[3px] border-neutral-950 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-neutral-950 disabled:opacity-60"
           >
             {t("common.clear")}
-          </a>
+          </button>
         </div>
       </form>
     </div>
   );
+}
+
+function readString(value: FormDataEntryValue | null): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function readInt(value: FormDataEntryValue | null): number | undefined {
+  if (typeof value !== "string" || !value.trim()) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
