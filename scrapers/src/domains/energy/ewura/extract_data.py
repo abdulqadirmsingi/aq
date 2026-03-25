@@ -160,6 +160,8 @@ def _rows_from_table(
         if market_segment == "wholesale" and not _row_has_decimal_price(row):
             continue
         loc = _location_text_from_row(row, cmap, first_fuel_col)
+        if loc and _is_parenthetical_suffix_only(loc) and last_location:
+            loc = _normalize_location(f"{last_location} {loc}")
         if loc:
             last_location = loc
         elif last_location:
@@ -368,6 +370,11 @@ def _looks_like_bad_location(location: str) -> bool:
     return not any(ch.isalpha() for ch in loc_norm)
 
 
+def _is_parenthetical_suffix_only(location: str) -> bool:
+    stripped = location.strip()
+    return stripped.startswith("(") and stripped.endswith(")")
+
+
 def _normalize_text(value: str | None) -> str:
     if not value:
         return ""
@@ -440,13 +447,15 @@ def _should_merge_location_tokens(
 ) -> bool:
     left_core = re.sub(r"^[^A-Za-z]+|[^A-Za-z']+$", "", left)
     right_core = re.sub(r"^[^A-Za-z]+|[^A-Za-z']+$", "", right)
-    if not left_core or not right_core:
+    left_letters = re.sub(r"[^A-Za-z']", "", left_core)
+    right_letters = re.sub(r"[^A-Za-z']", "", right_core)
+    if not left_letters or not right_letters:
         return False
-    if not left_core.replace("'", "").isalpha() or not right_core.replace("'", "").isalpha():
+    if not left_letters.replace("'", "").isalpha() or not right_letters.replace("'", "").isalpha():
         return False
-    if len(left_core) == 1 and len(right_core) >= 3:
+    if len(left_letters) == 1 and len(right_letters) >= 3:
         return True
-    return right_core[0].islower() and right_core.casefold() not in connectors
+    return right_letters[0].islower() and right_letters.casefold() not in connectors
 
 
 def _prices_look_plausible(prices: list[int]) -> bool:

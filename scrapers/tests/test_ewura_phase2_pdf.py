@@ -188,6 +188,27 @@ def test_tables_to_fuel_records_repairs_only_obvious_broken_location_splits() ->
     assert "Mvomero (Sanga Sanga)" in locations
 
 
+def test_tables_to_fuel_records_merges_parenthetical_suffix_rows() -> None:
+    table = [
+        ["No.", "Regional/Town Centres", "Petrol", "Diesel", "Kerosene"],
+        ["90.", "Tarime", "2,990", "2,938", "2,976"],
+        ["91.", "(Kewanja/Nyamongo)", "2,996", "2,944", "2,981"],
+        ["134.", "Wanging'ombe", "2,893", "2,841", "2,879"],
+        ["135.", "(Igwachanya)", "2,893", "2,841", "2,879"],
+    ]
+
+    records, _warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 1, 7),
+    )
+
+    locations = {record.location for record in records}
+    assert "Tarime (Kewanja/Nyamongo)" in locations
+    assert "Wanging'ombe (Igwachanya)" in locations
+    assert "(Kewanja/Nyamongo)" not in locations
+    assert "(Igwachanya)" not in locations
+
+
 def test_fetch_and_parse_rejects_unknown_extension() -> None:
     ref = FilteredDocumentRef(
         url=(
