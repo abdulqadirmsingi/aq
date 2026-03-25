@@ -25,6 +25,17 @@ class ScraperSettings(BaseSettings):
         default="AQ-DataIntelligenceHub/1.0 (research; contact: admin@local)",
         description="User-Agent sent with outbound requests",
     )
+    ewura_max_document_mb: float = Field(
+        default=25.0,
+        ge=1.0,
+        le=200.0,
+        description="Abort in-memory download if Content-Length or stream exceeds this",
+    )
+    ewura_run_pdf_limit: int | None = Field(
+        default=None,
+        ge=1,
+        description="When set, ``EwuraFuelScraper.run`` ingests at most this many PDFs",
+    )
 
 
 def load_settings() -> ScraperSettings:

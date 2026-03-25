@@ -39,3 +39,27 @@ class ScraperHttpClient:
         response = self._client.get(url)
         response.raise_for_status()
         return response.text
+
+    @http_retry()
+    def get_bytes_bounded(self, url: str, max_bytes: int) -> bytes:
+        """Stream response body; raises if ``max_bytes`` is exceeded."""
+        with self._client.stream("GET", url) as response:
+            response.raise_for_status()
+            cl = response.headers.get("content-length")
+            if cl is not None:
+                try:
+                    declared = int(cl)
+                except ValueError:
+                    declared = None
+                if declared is not None and declared > max_bytes:
+                    msg = f"Content-Length {cl} exceeds cap {max_bytes}"
+                    raise ValueError(msg)
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes():
+                total += len(chunk)
+                if total > max_bytes:
+                    msg = f"Download exceeded max_bytes={max_bytes}"
+                    raise ValueError(msg)
+                chunks.append(chunk)
+            return b"".join(chunks)
