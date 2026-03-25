@@ -15,16 +15,31 @@ from src.domains.energy.ewura.structured_log import ewura_extra, ewura_warning
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_cap_price_document(
+def _document_extension(url: str) -> str | None:
+    path = url.split("?", maxsplit=1)[0].lower()
+    if path.endswith(".pdf"):
+        return ".pdf"
+    if path.endswith(".docx"):
+        return ".docx"
+    return None
+
+
+def download_cap_price_bulletin(
     client: ScraperHttpClient,
     ref: FilteredDocumentRef,
     *,
     max_bytes: int,
-) -> EwuraParseOutcome:
-    """Download one bulletin and dispatch to PDF or DOCX parser."""
+) -> EwuraParseOutcome | tuple[bytes, str, str]:
+    """
+    Download raw bytes and fingerprint, or return an error outcome.
+
+    Success: ``(raw_bytes, sha256_hex, extension)`` where extension is
+    ``.pdf`` or ``.docx``.
+    """
     url = str(ref.url)
-    path = url.split("?", maxsplit=1)[0].lower()
-    if not (path.endswith(".pdf") or path.endswith(".docx")):
+    ext = _document_extension(url)
+    if ext is None:
+        path = url.split("?", maxsplit=1)[0].lower()
         ewura_warning(
             logger,
             "ewura_unsupported_format",
@@ -64,16 +79,47 @@ def fetch_and_parse_cap_price_document(
             error=f"download_failed:{exc!s}",
         )
 
-    if path.endswith(".pdf"):
+    return (raw, sha, ext)
+
+
+def parse_cap_price_bulletin_bytes(
+    raw: bytes,
+    ext: str,
+    ref: FilteredDocumentRef,
+    content_sha256: str,
+) -> EwuraParseOutcome:
+    """Parse already-downloaded bulletin bytes."""
+    url = str(ref.url)
+    if ext == ".pdf":
         return parse_cap_price_pdf_bytes(
             raw,
             document_url=url,
             link_text=ref.link_text,
-            content_sha256=sha,
+            content_sha256=content_sha256,
         )
-    return parse_cap_price_docx_bytes(
-        raw,
+    if ext == ".docx":
+        return parse_cap_price_docx_bytes(
+            raw,
+            document_url=url,
+            link_text=ref.link_text,
+            content_sha256=content_sha256,
+        )
+    return EwuraParseOutcome(
+        ok=False,
         document_url=url,
-        link_text=ref.link_text,
-        content_sha256=sha,
+        error="unsupported_format",
     )
+
+
+def fetch_and_parse_cap_price_document(
+    client: ScraperHttpClient,
+    ref: FilteredDocumentRef,
+    *,
+    max_bytes: int,
+) -> EwuraParseOutcome:
+    """Download one bulletin and dispatch to PDF or DOCX parser."""
+    step = download_cap_price_bulletin(client, ref, max_bytes=max_bytes)
+    if isinstance(step, EwuraParseOutcome):
+        return step
+    raw, sha, ext = step
+    return parse_cap_price_bulletin_bytes(raw, ext, ref, sha)

@@ -1,6 +1,6 @@
 """Scraper configuration loaded from environment variables."""
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +38,19 @@ class ScraperSettings(BaseSettings):
             "When set, ``EwuraFuelScraper.run`` ingests at most this many "
             "PDF/DOCX bulletins (name kept for backward compatibility)"
         ),
+    )
+    database_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DATABASE_URL", "SCRAPER_DATABASE_URL"),
+        description="PostgreSQL URL for fingerprint dedupe (optional)",
+    )
+    ewura_skip_successful_urls: bool = Field(
+        default=True,
+        description="Skip URLs that already have parse_ok=true in fingerprints",
+    )
+    celery_broker_url: str = Field(
+        default="redis://localhost:6379/0",
+        validation_alias=AliasChoices("CELERY_BROKER_URL", "REDIS_URL"),
     )
 
 

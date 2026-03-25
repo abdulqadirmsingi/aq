@@ -56,3 +56,7 @@ class EwuraParseOutcome(BaseModel):
     document_url: str
     payload: EwuraDocumentPayload | None = None
     error: str | None = None
+    skipped: bool = Field(
+        default=False,
+        description="True when dedupe skipped download/parse for this URL or hash",
+    )

@@ -28,9 +28,13 @@ def tables_to_fuel_records(
     for idx, table in enumerate(tables):
         cmap = HeaderDetector.detect(table)
         used_continuation = False
-        if cmap is None and last_cmap is not None and _continuation_candidate(
-            table,
-            last_cmap,
+        if (
+            cmap is None
+            and last_cmap is not None
+            and _continuation_candidate(
+                table,
+                last_cmap,
+            )
         ):
             cmap = replace(last_cmap, header_row_index=-1)
             used_continuation = True

@@ -6,9 +6,11 @@ import logging
 
 from src.core.base_scraper import BaseScraper
 from src.core.config import load_settings
+from src.core.fingerprint_store import DocumentFingerprintStore
 from src.core.http_client import ScraperHttpClient
 from src.domains.energy.ewura.document_pipeline import (
-    fetch_and_parse_cap_price_document,
+    download_cap_price_bulletin,
+    parse_cap_price_bulletin_bytes,
 )
 from src.domains.energy.ewura.fetch import fetch_page
 from src.domains.energy.ewura.listing import list_cap_price_documents_from_html
@@ -44,34 +46,111 @@ class EwuraFuelScraper(BaseScraper):
 
     def fetch_and_parse_document(self, ref: FilteredDocumentRef) -> EwuraParseOutcome:
         """Download one PDF or DOCX in memory; return rows or a structured outcome."""
-        return fetch_and_parse_cap_price_document(
+        step = download_cap_price_bulletin(
             self._http,
             ref,
             max_bytes=self._max_document_bytes(),
         )
+        if isinstance(step, EwuraParseOutcome):
+            return step
+        raw, sha, ext = step
+        return parse_cap_price_bulletin_bytes(raw, ext, ref, sha)
 
     def ingest_cap_price_documents(
         self,
         *,
         limit: int | None = None,
+        fingerprint_store: DocumentFingerprintStore | None = None,
     ) -> list[EwuraParseOutcome]:
-        """Parse all listed PDF and DOCX cap-price bulletins."""
+        """Parse listed PDF/DOCX bulletins; optional DB-backed dedupe."""
         refs = self.list_cap_price_documents()
         doc_refs = [
             r
             for r in refs
-            if str(r.url).lower().split("?", maxsplit=1)[0].endswith(
+            if str(r.url)
+            .lower()
+            .split("?", maxsplit=1)[0]
+            .endswith(
                 (".pdf", ".docx"),
             )
         ]
         eff_limit = limit if limit is not None else self._settings.ewura_run_pdf_limit
         if eff_limit is not None:
             doc_refs = doc_refs[:eff_limit]
-        return [self.fetch_and_parse_document(r) for r in doc_refs]
+
+        outcomes: list[EwuraParseOutcome] = []
+        for ref in doc_refs:
+            url = str(ref.url)
+            if (
+                fingerprint_store
+                and self._settings.ewura_skip_successful_urls
+                and fingerprint_store.url_parse_succeeded(url)
+            ):
+                outcomes.append(
+                    EwuraParseOutcome(
+                        ok=False,
+                        skipped=True,
+                        document_url=url,
+                        error="skipped_known_url",
+                    ),
+                )
+                continue
+
+            step = download_cap_price_bulletin(
+                self._http,
+                ref,
+                max_bytes=self._max_document_bytes(),
+            )
+            if isinstance(step, EwuraParseOutcome):
+                outcomes.append(step)
+                continue
+            raw, sha, ext = step
+
+            if fingerprint_store and fingerprint_store.has_successful_hash(sha):
+                fingerprint_store.upsert(
+                    document_url=url,
+                    content_sha256=sha,
+                    parse_ok=True,
+                    records_extracted=0,
+                )
+                outcomes.append(
+                    EwuraParseOutcome(
+                        ok=False,
+                        skipped=True,
+                        document_url=url,
+                        error="skipped_duplicate_hash",
+                    ),
+                )
+                continue
+
+            outcome = parse_cap_price_bulletin_bytes(raw, ext, ref, sha)
+            if fingerprint_store and outcome.payload is not None:
+                fingerprint_store.upsert(
+                    document_url=url,
+                    content_sha256=outcome.payload.content_sha256,
+                    parse_ok=outcome.ok,
+                    records_extracted=len(outcome.payload.data),
+                )
+            outcomes.append(outcome)
+        return outcomes
 
     def run(self) -> None:
-        outcomes = self.ingest_cap_price_documents()
+        store: DocumentFingerprintStore | None = None
+        own_store = False
+        if self._settings.database_url:
+            store = DocumentFingerprintStore(
+                self._settings.database_url,
+                self.name,
+            )
+            own_store = True
+        try:
+            outcomes = self.ingest_cap_price_documents(fingerprint_store=store)
+        finally:
+            if own_store and store is not None:
+                store.close()
+
         ok_n = sum(1 for o in outcomes if o.ok)
+        skipped_n = sum(1 for o in outcomes if o.skipped)
         ewura_info(
             logger,
             "ewura_fuel_ingest_complete",
@@ -80,6 +159,7 @@ class EwuraFuelScraper(BaseScraper):
             scraper=self.name,
             documents_attempted=len(outcomes),
             documents_ok=ok_n,
+            documents_skipped=skipped_n,
         )
 
     def close(self) -> None:
