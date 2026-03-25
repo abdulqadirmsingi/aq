@@ -26,9 +26,12 @@ export default async function EnergyPage({ searchParams }: EnergyPageProps) {
   const query: EnergyQueryState = {
     fuelType: readSingleValue(params.fuelType),
     locationQuery: readSingleValue(params.locationQuery),
-    historyYear: readInt(params.historyYear),
-    latestOffset: readInt(params.latestOffset) ?? 0,
-    historyOffset: readInt(params.historyOffset) ?? 0,
+    retailHistoryYear: readInt(params.retailHistoryYear),
+    wholesaleHistoryYear: readInt(params.wholesaleHistoryYear),
+    retailLatestOffset: readInt(params.retailLatestOffset) ?? 0,
+    retailHistoryOffset: readInt(params.retailHistoryOffset) ?? 0,
+    wholesaleLatestOffset: readInt(params.wholesaleLatestOffset) ?? 0,
+    wholesaleHistoryOffset: readInt(params.wholesaleHistoryOffset) ?? 0,
   };
   const data = await getEnergyPageData(query);
 

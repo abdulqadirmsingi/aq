@@ -8,11 +8,16 @@ from src.domains.energy.ewura.models import FuelPriceRecord
 
 
 def dedupe_fuel_records(records: list[FuelPriceRecord]) -> list[FuelPriceRecord]:
-    """Keep first occurrence per (location, fuel_type, recorded_at)."""
-    seen: set[tuple[str, str, date]] = set()
+    """Keep first occurrence per (location, market_segment, fuel_type, recorded_at)."""
+    seen: set[tuple[str, str, str, date]] = set()
     out: list[FuelPriceRecord] = []
     for rec in records:
-        key = (rec.location.lower().strip(), rec.fuel_type, rec.recorded_at)
+        key = (
+            rec.location.lower().strip(),
+            rec.market_segment,
+            rec.fuel_type,
+            rec.recorded_at,
+        )
         if key in seen:
             continue
         seen.add(key)

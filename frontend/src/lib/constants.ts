@@ -1,6 +1,7 @@
 export const ROUTES = {
   dashboard: "/",
   energy: "/energy",
+  energyMonitoring: "/energy/monitoring",
   money: "/money",
   livingCost: "/living-cost",
   medicine: "/medicine",
@@ -12,6 +13,7 @@ export type RouteKey = keyof typeof ROUTES;
 export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string }[] = [
   { key: "dashboard", translationKey: "nav.dashboard", icon: "grid" },
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
+  { key: "energyMonitoring", translationKey: "nav.energyMonitoring", icon: "activity" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
   { key: "livingCost", translationKey: "nav.livingCost", icon: "home" },
   { key: "medicine", translationKey: "nav.medicine", icon: "pill" },

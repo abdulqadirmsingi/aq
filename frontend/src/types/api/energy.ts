@@ -12,6 +12,7 @@ export interface EwuraFuelObservationRead {
   canonical_location_name: string | null;
   canonical_region_name: string | null;
   raw_location_text: string;
+  market_segment: string;
   fuel_type: string;
   price: number;
   price_display: string;
@@ -30,6 +31,7 @@ export interface EwuraFuelLatestPriceRead {
   canonical_location_name: string | null;
   canonical_region_name: string | null;
   raw_location_text: string;
+  market_segment: string;
   fuel_type: string;
   price: number;
   price_display: string;
@@ -44,9 +46,13 @@ export interface EwuraFuelLatestPriceRead {
 
 export interface EwuraFuelFiltersRead {
   fuel_types: string[];
-  history_years: number[];
-  latest_snapshot_date: string | null;
-  latest_snapshot_month_label: string | null;
+  market_segments: string[];
+  retail_history_years: number[];
+  wholesale_history_years: number[];
+  retail_latest_snapshot_date: string | null;
+  retail_latest_snapshot_month_label: string | null;
+  wholesale_latest_snapshot_date: string | null;
+  wholesale_latest_snapshot_month_label: string | null;
 }
 
 export interface EwuraFuelLatestSummaryItemRead {

@@ -14,24 +14,40 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 
 from src.core.db_url import sync_database_url
-from src.domains.energy.ewura.models import EwuraDocumentPayload
+from src.domains.energy.ewura.models import EwuraDocumentPayload, FuelMarketSegment
 
 _EWURA_SOURCE_SLUG = "ewura"
 _ENERGY_CATEGORY_SLUG = "energy"
 _TZ_COUNTRY_PATH = "TZ"
-_FUEL_METRICS: dict[str, tuple[str, str]] = {
-    "petrol": (
-        "ewura_petrol_cap_price",
-        "Monthly EWURA retail cap price for petrol.",
-    ),
-    "diesel": (
-        "ewura_diesel_cap_price",
-        "Monthly EWURA retail cap price for diesel.",
-    ),
-    "kerosene": (
-        "ewura_kerosene_cap_price",
-        "Monthly EWURA retail cap price for kerosene.",
-    ),
+_FUEL_METRICS: dict[FuelMarketSegment, dict[str, tuple[str, str]]] = {
+    "retail": {
+        "petrol": (
+            "ewura_petrol_cap_price",
+            "Monthly EWURA retail cap price for petrol.",
+        ),
+        "diesel": (
+            "ewura_diesel_cap_price",
+            "Monthly EWURA retail cap price for diesel.",
+        ),
+        "kerosene": (
+            "ewura_kerosene_cap_price",
+            "Monthly EWURA retail cap price for kerosene.",
+        ),
+    },
+    "wholesale": {
+        "petrol": (
+            "ewura_wholesale_petrol_price",
+            "Monthly EWURA wholesale price for petrol.",
+        ),
+        "diesel": (
+            "ewura_wholesale_diesel_price",
+            "Monthly EWURA wholesale price for diesel.",
+        ),
+        "kerosene": (
+            "ewura_wholesale_kerosene_price",
+            "Monthly EWURA wholesale price for kerosene.",
+        ),
+    },
 }
 _TZ_REGION_SEEDS: tuple[tuple[str, str, str], ...] = (
     ("Arusha", "ARU", "TZ/arusha"),
@@ -76,8 +92,12 @@ def _recorded_at_timestamp(value: date) -> datetime:
     return datetime(value.year, value.month, value.day, tzinfo=UTC)
 
 
-def _external_reference(payload: EwuraDocumentPayload, fuel_type: str) -> str:
-    return f"ewura:{fuel_type}:{payload.content_sha256[:48]}"
+def _external_reference(
+    payload: EwuraDocumentPayload,
+    fuel_type: str,
+    market_segment: FuelMarketSegment,
+) -> str:
+    return f"ewura:{market_segment}:{fuel_type}:{payload.content_sha256[:48]}"
 
 
 class EwuraPersistenceStore:
@@ -194,7 +214,7 @@ class EwuraPersistenceStore:
                 },
             )
 
-    def ensure_metric_ids(self) -> dict[str, UUID]:
+    def ensure_metric_ids(self) -> dict[tuple[FuelMarketSegment, str], UUID]:
         with self._engine.begin() as conn:
             category_id, source_id, _country_id = self._ensure_reference_ids(conn)
             return self._ensure_metric_ids(conn, category_id, source_id)
@@ -204,56 +224,58 @@ class EwuraPersistenceStore:
         conn: Connection,
         category_id: UUID,
         source_id: UUID,
-    ) -> dict[str, UUID]:
-        metric_ids: dict[str, UUID] = {}
-        for fuel_type, (slug, description) in _FUEL_METRICS.items():
-            metric_id = conn.execute(
-                text(
-                    """
-                    INSERT INTO metrics (
-                        id, slug, name, unit, description, category_id,
-                        canonical_source_id, value_type, default_frequency,
-                        is_location_required, validation_rules, dimensions_schema,
-                        created_at, updated_at
-                    )
-                    VALUES (
-                        gen_random_uuid(), :slug, :name, 'TZS/Litre', :description, :category_id,
-                        :source_id, 'numeric', 'monthly',
-                        true, CAST(:validation_rules AS jsonb),
-                        CAST(:dimensions_schema AS jsonb),
-                        now(), now()
-                    )
-                    ON CONFLICT (slug) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        unit = EXCLUDED.unit,
-                        description = EXCLUDED.description,
-                        category_id = EXCLUDED.category_id,
-                        canonical_source_id = EXCLUDED.canonical_source_id,
-                        value_type = EXCLUDED.value_type,
-                        default_frequency = EXCLUDED.default_frequency,
-                        is_location_required = EXCLUDED.is_location_required,
-                        validation_rules = EXCLUDED.validation_rules,
-                        dimensions_schema = EXCLUDED.dimensions_schema,
-                        updated_at = now()
-                    RETURNING id
-                    """,
-                ),
-                {
-                    "slug": slug,
-                    "name": f"EWURA {fuel_type.title()} Cap Price",
-                    "description": description,
-                    "category_id": category_id,
-                    "source_id": source_id,
-                    "validation_rules": json.dumps({"min": 0, "max": 100000}),
-                    "dimensions_schema": json.dumps(
-                        {
-                            "fuel_type": {"type": "string"},
-                            "document_url": {"type": "string"},
-                        }
+    ) -> dict[tuple[FuelMarketSegment, str], UUID]:
+        metric_ids: dict[tuple[FuelMarketSegment, str], UUID] = {}
+        for market_segment, market_metrics in _FUEL_METRICS.items():
+            for fuel_type, (slug, description) in market_metrics.items():
+                metric_id = conn.execute(
+                    text(
+                        """
+                        INSERT INTO metrics (
+                            id, slug, name, unit, description, category_id,
+                            canonical_source_id, value_type, default_frequency,
+                            is_location_required, validation_rules, dimensions_schema,
+                            created_at, updated_at
+                        )
+                        VALUES (
+                            gen_random_uuid(), :slug, :name, 'TZS/Litre', :description, :category_id,
+                            :source_id, 'numeric', 'monthly',
+                            true, CAST(:validation_rules AS jsonb),
+                            CAST(:dimensions_schema AS jsonb),
+                            now(), now()
+                        )
+                        ON CONFLICT (slug) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            unit = EXCLUDED.unit,
+                            description = EXCLUDED.description,
+                            category_id = EXCLUDED.category_id,
+                            canonical_source_id = EXCLUDED.canonical_source_id,
+                            value_type = EXCLUDED.value_type,
+                            default_frequency = EXCLUDED.default_frequency,
+                            is_location_required = EXCLUDED.is_location_required,
+                            validation_rules = EXCLUDED.validation_rules,
+                            dimensions_schema = EXCLUDED.dimensions_schema,
+                            updated_at = now()
+                        RETURNING id
+                        """,
                     ),
-                },
-            ).scalar_one()
-            metric_ids[fuel_type] = metric_id
+                    {
+                        "slug": slug,
+                        "name": f"EWURA {market_segment.title()} {fuel_type.title()} Price",
+                        "description": description,
+                        "category_id": category_id,
+                        "source_id": source_id,
+                        "validation_rules": json.dumps({"min": 0, "max": 100000}),
+                        "dimensions_schema": json.dumps(
+                            {
+                                "fuel_type": {"type": "string"},
+                                "market_segment": {"type": "string"},
+                                "document_url": {"type": "string"},
+                            }
+                        ),
+                    },
+                ).scalar_one()
+                metric_ids[(market_segment, fuel_type)] = metric_id
         return metric_ids
 
     def start_run(self, *, trigger_type: str) -> tuple[UUID, UUID]:
@@ -376,8 +398,9 @@ class EwuraPersistenceStore:
                 inserted += self._upsert_datapoint(
                     conn,
                     payload=payload,
-                    metric_id=metric_ids[rec.fuel_type],
+                    metric_id=metric_ids[(rec.market_segment, rec.fuel_type)],
                     location_id=location_id,
+                    market_segment=rec.market_segment,
                     fuel_type=rec.fuel_type,
                     price=rec.price,
                     recorded_at=_recorded_at_timestamp(rec.recorded_at),
@@ -517,6 +540,7 @@ class EwuraPersistenceStore:
         payload: EwuraDocumentPayload,
         metric_id: UUID,
         location_id: UUID,
+        market_segment: FuelMarketSegment,
         fuel_type: str,
         price: int,
         recorded_at: datetime,
@@ -554,6 +578,7 @@ class EwuraPersistenceStore:
         extra_data = {
             "document_url": payload.document_url,
             "published_date": payload.published_date,
+            "market_segment": market_segment,
             "raw_location_text": raw_location_text,
         }
         ingestion_metadata = {
@@ -620,7 +645,7 @@ class EwuraPersistenceStore:
                 "scraper_run_id": scraper_run_id,
                 "supersedes_id": supersedes_id,
                 "supersedes_recorded_at": supersedes_recorded_at,
-                "external_reference": _external_reference(payload, fuel_type),
+                "external_reference": _external_reference(payload, fuel_type, market_segment),
                 "unit_override": "TZS/Litre",
                 "value_numeric": str(price),
                 "extra_data": json.dumps(extra_data),
@@ -637,7 +662,7 @@ class EwuraPersistenceStore:
                     fuel_grade, provider_name, created_at, updated_at
                 )
                 VALUES (
-                    gen_random_uuid(), :data_point_id, :recorded_at, 'fuel_cap_price',
+                    gen_random_uuid(), :data_point_id, :recorded_at, :energy_type,
                     :fuel_grade, 'EWURA', now(), now()
                 )
                 """,
@@ -645,6 +670,11 @@ class EwuraPersistenceStore:
             {
                 "data_point_id": data_point_id,
                 "recorded_at": recorded_at,
+                "energy_type": (
+                    "fuel_retail_cap_price"
+                    if market_segment == "retail"
+                    else "fuel_wholesale_price"
+                ),
                 "fuel_grade": fuel_type,
             },
         )

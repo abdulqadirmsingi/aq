@@ -20,6 +20,7 @@ class EwuraFuelObservationRead(BaseModel):
     canonical_location_name: str | None
     canonical_region_name: str | None
     raw_location_text: str
+    market_segment: str
     fuel_type: str
     price: int
     price_display: str
@@ -38,6 +39,7 @@ class EwuraFuelLatestPriceRead(BaseModel):
     canonical_location_name: str | None
     canonical_region_name: str | None
     raw_location_text: str
+    market_segment: str
     fuel_type: str
     price: int
     price_display: str
@@ -52,9 +54,13 @@ class EwuraFuelLatestPriceRead(BaseModel):
 
 class EwuraFuelFiltersRead(BaseModel):
     fuel_types: list[str]
-    history_years: list[int]
-    latest_snapshot_date: date | None
-    latest_snapshot_month_label: str | None
+    market_segments: list[str]
+    retail_history_years: list[int]
+    wholesale_history_years: list[int]
+    retail_latest_snapshot_date: date | None
+    retail_latest_snapshot_month_label: str | None
+    wholesale_latest_snapshot_date: date | None
+    wholesale_latest_snapshot_month_label: str | None
 
 
 class EwuraFuelLatestSummaryItemRead(BaseModel):

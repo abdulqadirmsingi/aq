@@ -20,9 +20,23 @@ export function EnergyFeature({ data }: EnergyFeatureProps) {
         monthsCount={data.availableMonths.length}
       />
       <EnergyFiltersBar filters={data.filters} query={data.query} />
-      <LatestPricesTable data={data.latestPrices} query={data.query} />
+      <LatestPricesTable
+        data={data.retailLatestPrices}
+        query={data.query}
+        marketSegment="retail"
+      />
       <TrendsTable data={data.currentYearTrends} />
-      <HistoryTable history={data.history} query={data.query} />
+      <HistoryTable history={data.retailHistory} query={data.query} marketSegment="retail" />
+      <LatestPricesTable
+        data={data.wholesaleLatestPrices}
+        query={data.query}
+        marketSegment="wholesale"
+      />
+      <HistoryTable
+        history={data.wholesaleHistory}
+        query={data.query}
+        marketSegment="wholesale"
+      />
       <RollupsTable data={data.rollups} />
       <InsightsPanel insights={data.insights} />
     </div>

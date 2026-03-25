@@ -10,9 +10,10 @@ import type { EnergyQueryState } from "../types";
 interface LatestPricesTableProps {
   data: EwuraFuelLatestPricePage;
   query: EnergyQueryState;
+  marketSegment: "retail" | "wholesale";
 }
 
-export async function LatestPricesTable({ data, query }: LatestPricesTableProps) {
+export async function LatestPricesTable({ data, query, marketSegment }: LatestPricesTableProps) {
   const t = await getTranslations();
 
   const columns = [
@@ -61,8 +62,16 @@ export async function LatestPricesTable({ data, query }: LatestPricesTableProps)
   return (
     <div>
       <SectionHeader
-        title={t("energy.latestPrices")}
-        description={t("energy.latestPricesDescription", { count: data.meta.total })}
+        title={
+          marketSegment === "retail"
+            ? t("energy.latestRetailPrices")
+            : t("energy.latestWholesalePrices")
+        }
+        description={
+          marketSegment === "retail"
+            ? t("energy.latestRetailPricesDescription", { count: data.meta.total })
+            : t("energy.latestWholesalePricesDescription", { count: data.meta.total })
+        }
       />
       <DataTable
         columns={columns}
@@ -72,7 +81,7 @@ export async function LatestPricesTable({ data, query }: LatestPricesTableProps)
       />
       <TablePagination
         query={query}
-        offsetKey="latestOffset"
+        offsetKey={marketSegment === "retail" ? "retailLatestOffset" : "wholesaleLatestOffset"}
         limit={data.meta.limit}
         offset={data.meta.offset}
         total={data.meta.total}

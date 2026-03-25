@@ -17,14 +17,23 @@ export function buildEnergyHref(
   if (next.locationQuery) {
     params.set("locationQuery", next.locationQuery);
   }
-  if (next.historyYear) {
-    params.set("historyYear", String(next.historyYear));
+  if (next.retailHistoryYear) {
+    params.set("retailHistoryYear", String(next.retailHistoryYear));
   }
-  if (next.latestOffset > 0) {
-    params.set("latestOffset", String(next.latestOffset));
+  if (next.wholesaleHistoryYear) {
+    params.set("wholesaleHistoryYear", String(next.wholesaleHistoryYear));
   }
-  if (next.historyOffset > 0) {
-    params.set("historyOffset", String(next.historyOffset));
+  if (next.retailLatestOffset > 0) {
+    params.set("retailLatestOffset", String(next.retailLatestOffset));
+  }
+  if (next.retailHistoryOffset > 0) {
+    params.set("retailHistoryOffset", String(next.retailHistoryOffset));
+  }
+  if (next.wholesaleLatestOffset > 0) {
+    params.set("wholesaleLatestOffset", String(next.wholesaleLatestOffset));
+  }
+  if (next.wholesaleHistoryOffset > 0) {
+    params.set("wholesaleHistoryOffset", String(next.wholesaleHistoryOffset));
   }
 
   const queryString = params.toString();

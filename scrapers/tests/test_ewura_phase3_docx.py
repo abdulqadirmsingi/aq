@@ -102,3 +102,52 @@ def test_tables_to_fuel_records_skips_numeric_location_cells() -> None:
         effective_date=date(2025, 1, 1),
     )
     assert {r.location for r in recs} == {"Dodoma", "Morogoro"}
+
+
+def test_tables_to_fuel_records_skips_non_retail_port_table() -> None:
+    tables = [
+        [
+            ["Port", "Petrol", None, None, "Diesel", None, None, "Kerosene"],
+            ["Dar es Salaam", "100", None, None, "200", None, None, "300"],
+        ],
+        [
+            ["S.No", "Town", "Cap Prices", None, None],
+            [None, None, "Petrol", "Diesel", "Kerosene"],
+            ["1", "Dodoma", "100", "200", "300"],
+        ],
+    ]
+
+    recs, warnings = tables_to_fuel_records(
+        tables,
+        effective_date=date(2025, 1, 1),
+    )
+
+    assert {r.location for r in recs} == {"Dodoma"}
+    assert any("non_retail" in warning for warning in warnings)
+
+
+def test_tables_to_fuel_records_skips_lower_quality_duplicate_retail_table() -> None:
+    tables = [
+        [
+            ["S.No", "Town", "Cap Prices", None, None],
+            [None, None, "Petrol", "Diesel", "Kerosene"],
+            ["1", "Uvinza (Lugufu)", "100", "200", "300"],
+            ["2", "Mkwajuni", "110", "210", "310"],
+        ],
+        [
+            [None, None, None, None, None, None],
+            ["S.No", None, "Town", None, None, None],
+            [None, None, None, "Petrol", "Diesel", "Kerosene"],
+            ["1", "Uvinza (Lugufu", ")", "100", "200", "300"],
+            ["2", "Mkwa", "juni", "110", "210", "310"],
+        ],
+    ]
+
+    recs, warnings = tables_to_fuel_records(
+        tables,
+        effective_date=date(2025, 1, 1),
+    )
+
+    assert len(recs) == 6
+    assert {r.location for r in recs} == {"Uvinza (Lugufu)", "Mkwajuni"}
+    assert any("duplicate_table" in warning for warning in warnings)

@@ -13,16 +13,21 @@ import type {
 export interface EnergyQueryState {
   fuelType?: string;
   locationQuery?: string;
-  historyYear?: number;
-  latestOffset: number;
-  historyOffset: number;
+  retailHistoryYear?: number;
+  wholesaleHistoryYear?: number;
+  retailLatestOffset: number;
+  retailHistoryOffset: number;
+  wholesaleLatestOffset: number;
+  wholesaleHistoryOffset: number;
 }
 
 export interface EnergyPageData {
   dashboardSummary: EwuraFuelDashboardSummaryRead;
-  latestPrices: EwuraFuelLatestPricePage;
+  retailLatestPrices: EwuraFuelLatestPricePage;
+  wholesaleLatestPrices: EwuraFuelLatestPricePage;
   currentYearTrends: EwuraFuelMonthlyTrendRead[];
-  history: EwuraFuelObservationPage;
+  retailHistory: EwuraFuelObservationPage;
+  wholesaleHistory: EwuraFuelObservationPage;
   filters: EwuraFuelFiltersRead;
   query: EnergyQueryState;
   availableMonths: EwuraFuelAvailableMonthRead[];

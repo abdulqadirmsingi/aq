@@ -11,7 +11,7 @@ from app.db.models.data_point import DataPoint
 from app.db.models.reference import Location, Metric, Source
 from app.modules.energy.models.fuel import EnergyDetail
 from app.modules.energy.repositories.fuel_repository_shared import (
-    EWURA_METRIC_SLUGS,
+    ENERGY_TYPE_BY_MARKET,
     FuelAvailableMonthRecord,
     FuelLatestPriceRecord,
     FuelLatestSummaryRecord,
@@ -22,11 +22,12 @@ from app.modules.energy.repositories.fuel_repository_shared import (
 
 
 class FuelAnalyticsRepositoryMixin:
-    async def get_latest_snapshot_date(self) -> date | None:
+    async def get_latest_snapshot_date(self, *, market_segment: str = "retail") -> date | None:
         snapshot_date_expr = cast(DataPoint.recorded_at, Date)
         result = await self._session.execute(
             select(func.max(snapshot_date_expr))
             .select_from(build_base_from_clause())
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
         )
         return result.scalar_one_or_none()
 
@@ -34,6 +35,7 @@ class FuelAnalyticsRepositoryMixin:
         self,
         *,
         snapshot_date: date,
+        market_segment: str = "retail",
         fuel_type: str | None = None,
         location_query: str | None = None,
         offset: int | None = None,
@@ -82,6 +84,9 @@ class FuelAnalyticsRepositoryMixin:
                 current_location.name.label("canonical_location_name"),
                 current_parent_location.name.label("canonical_region_name"),
                 raw_location.label("raw_location_text"),
+                func.coalesce(current.extra_data.op("->>")("market_segment"), market_segment).label(
+                    "market_segment"
+                ),
                 current_energy.fuel_grade.label("fuel_type"),
                 current.value_numeric.label("price"),
                 previous_price_sq.label("previous_price"),
@@ -99,8 +104,7 @@ class FuelAnalyticsRepositoryMixin:
             .outerjoin(current_location, current.location_id == current_location.id)
             .outerjoin(current_parent_location, current_location.parent_id == current_parent_location.id)
             .where(current.is_current.is_(True))
-            .where(current_metric.slug.in_(EWURA_METRIC_SLUGS))
-            .where(current_energy.energy_type == "fuel_cap_price")
+            .where(current_energy.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
             .where(current.recorded_at == current_ts)
         )
         if fuel_type is not None:
@@ -126,6 +130,7 @@ class FuelAnalyticsRepositoryMixin:
         self,
         *,
         snapshot_date: date,
+        market_segment: str = "retail",
         fuel_type: str | None = None,
         location_query: str | None = None,
     ) -> int:
@@ -135,8 +140,7 @@ class FuelAnalyticsRepositoryMixin:
             .select_from(build_base_from_clause())
             .where(cast(DataPoint.recorded_at, Date) == snapshot_date)
             .where(DataPoint.is_current.is_(True))
-            .where(Metric.slug.in_(EWURA_METRIC_SLUGS))
-            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
         )
         if fuel_type is not None:
             stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
@@ -153,6 +157,7 @@ class FuelAnalyticsRepositoryMixin:
         self,
         *,
         snapshot_date: date,
+        market_segment: str = "retail",
     ) -> list[FuelLatestSummaryRecord]:
         stmt = (
             select(
@@ -165,6 +170,7 @@ class FuelAnalyticsRepositoryMixin:
             )
             .select_from(build_base_from_clause())
             .where(DataPoint.recorded_at == at_utc_midnight(snapshot_date))
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
             .group_by(cast(DataPoint.recorded_at, Date), EnergyDetail.fuel_grade)
             .order_by(EnergyDetail.fuel_grade.asc())
         )
@@ -175,6 +181,7 @@ class FuelAnalyticsRepositoryMixin:
         self,
         *,
         year: int,
+        market_segment: str = "retail",
         fuel_type: str | None = None,
     ) -> list[FuelMonthlyTrendRecord]:
         month_start_expr = cast(func.date_trunc("month", DataPoint.recorded_at), Date)
@@ -189,6 +196,7 @@ class FuelAnalyticsRepositoryMixin:
             )
             .select_from(build_base_from_clause())
             .where(extract("year", DataPoint.recorded_at) == year)
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
         )
         if fuel_type is not None:
             stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
@@ -203,7 +211,11 @@ class FuelAnalyticsRepositoryMixin:
         )
         return [FuelMonthlyTrendRecord(**row._mapping) for row in result]
 
-    async def get_available_months(self) -> list[FuelAvailableMonthRecord]:
+    async def get_available_months(
+        self,
+        *,
+        market_segment: str = "retail",
+    ) -> list[FuelAvailableMonthRecord]:
         month_start_expr = cast(func.date_trunc("month", DataPoint.recorded_at), Date)
         stmt = (
             select(
@@ -212,6 +224,7 @@ class FuelAnalyticsRepositoryMixin:
                 func.count(func.distinct(DataPoint.location_id)).label("locations_count"),
             )
             .select_from(build_base_from_clause())
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
             .group_by(month_start_expr)
             .order_by(month_start_expr.desc())
         )
@@ -222,7 +235,7 @@ class FuelAnalyticsRepositoryMixin:
         result = await self._session.execute(
             select(EnergyDetail.fuel_grade)
             .select_from(build_base_from_clause())
-            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .where(EnergyDetail.energy_type.in_(tuple(ENERGY_TYPE_BY_MARKET.values())))
             .distinct()
             .order_by(EnergyDetail.fuel_grade.asc())
         )
@@ -231,12 +244,13 @@ class FuelAnalyticsRepositoryMixin:
     async def list_history_years(
         self,
         *,
+        market_segment: str = "retail",
         exclude_snapshot_date: date | None,
     ) -> list[int]:
         stmt = (
             select(extract("year", DataPoint.recorded_at).label("year"))
             .select_from(build_base_from_clause())
-            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
             .distinct()
         )
         if exclude_snapshot_date is not None:

@@ -13,6 +13,9 @@ export function Sidebar() {
 
   function isActive(route: string): boolean {
     if (route === "/") return pathname === "/";
+    if (route === "/energy" && pathname.startsWith("/energy/monitoring")) {
+      return false;
+    }
     return pathname.startsWith(route);
   }
 

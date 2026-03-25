@@ -15,11 +15,11 @@ from app.db.models.data_point import DataPoint
 from app.db.models.reference import Location, Metric, Source
 from app.modules.energy.models.fuel import EnergyDetail
 
-EWURA_METRIC_SLUGS = (
-    "ewura_petrol_cap_price",
-    "ewura_diesel_cap_price",
-    "ewura_kerosene_cap_price",
-)
+FuelMarketSegment = str
+ENERGY_TYPE_BY_MARKET: dict[FuelMarketSegment, str] = {
+    "retail": "fuel_retail_cap_price",
+    "wholesale": "fuel_wholesale_price",
+}
 
 
 def at_utc_midnight(value: date) -> datetime:
@@ -39,6 +39,7 @@ class FuelObservationRecord:
     canonical_location_name: str | None
     canonical_region_name: str | None
     raw_location_text: str
+    market_segment: str
     fuel_type: str
     price: Decimal
     unit: str
@@ -54,6 +55,7 @@ class FuelLatestPriceRecord:
     canonical_location_name: str | None
     canonical_region_name: str | None
     raw_location_text: str
+    market_segment: str
     fuel_type: str
     price: Decimal
     previous_price: Decimal | None
@@ -113,6 +115,7 @@ def build_observation_select(
     month: int | None,
     fuel_type: str | None,
     location_query: str | None,
+    market_segment: FuelMarketSegment,
     exclude_snapshot_date: date | None = None,
 ):
     parent_location = aliased(Location)
@@ -133,6 +136,9 @@ def build_observation_select(
             Location.name.label("canonical_location_name"),
             parent_location.name.label("canonical_region_name"),
             raw_location.label("raw_location_text"),
+            func.coalesce(DataPoint.extra_data.op("->>")("market_segment"), market_segment).label(
+                "market_segment"
+            ),
             EnergyDetail.fuel_grade.label("fuel_type"),
             DataPoint.value_numeric.label("price"),
             func.coalesce(DataPoint.unit_override, Metric.unit, "TZS/Litre").label("unit"),
@@ -140,6 +146,7 @@ def build_observation_select(
             DataPoint.created_at.label("created_at"),
         )
         .select_from(build_base_from_clause(parent_location=parent_location))
+        .where(EnergyDetail.energy_type == ENERGY_TYPE_BY_MARKET[market_segment])
     )
     if year is not None:
         stmt = stmt.where(extract("year", DataPoint.recorded_at) == year)
@@ -168,6 +175,7 @@ def to_observation_record(row: Any) -> FuelObservationRecord:
         canonical_location_name=row["canonical_location_name"],
         canonical_region_name=row["canonical_region_name"],
         raw_location_text=row["raw_location_text"] or "",
+        market_segment=row["market_segment"] or "retail",
         fuel_type=row["fuel_type"] or "",
         price=row["price"],
         unit=row["unit"],

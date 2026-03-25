@@ -39,6 +39,7 @@ async def list_ewura_fuel_observations(
     offset: Annotated[int, Query(ge=0)] = 0,
     year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
     month: Annotated[int | None, Query(ge=1, le=12)] = None,
+    market_segment: Annotated[str, Query(pattern="^(retail|wholesale)$")] = "retail",
     fuel_type: Annotated[str | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
     location_id: Annotated[UUID | None, Query()] = None,
@@ -48,6 +49,7 @@ async def list_ewura_fuel_observations(
         offset=offset,
         year=year,
         month=month,
+        market_segment=market_segment,
         fuel_type=fuel_type,
         location_query=location_query,
         location_id=location_id,
@@ -59,12 +61,14 @@ async def get_latest_ewura_fuel_prices(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     limit: Annotated[int, Query(ge=1, le=5000)] = 200,
     offset: Annotated[int, Query(ge=0)] = 0,
+    market_segment: Annotated[str, Query(pattern="^(retail|wholesale)$")] = "retail",
     fuel_type: Annotated[str | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
 ) -> Page[EwuraFuelLatestPriceRead]:
     return await _fuel_service(db).list_latest_prices_page(
         limit=limit,
         offset=offset,
+        market_segment=market_segment,
         fuel_type=fuel_type,
         location_query=location_query,
     )
@@ -92,6 +96,7 @@ async def get_current_year_ewura_fuel_trends(
 @router.get("/fuel/ewura/history", response_model=Page[EwuraFuelObservationRead])
 async def get_ewura_fuel_history(
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    market_segment: Annotated[str, Query(pattern="^(retail|wholesale)$")] = "retail",
     fuel_type: Annotated[str | None, Query()] = None,
     location_id: Annotated[UUID | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
@@ -100,6 +105,7 @@ async def get_ewura_fuel_history(
     limit: Annotated[int, Query(ge=1, le=5000)] = 500,
 ) -> Page[EwuraFuelObservationRead]:
     return await _fuel_service(db).get_history(
+        market_segment=market_segment,
         fuel_type=fuel_type,
         location_id=location_id,
         location_query=location_query,
@@ -112,8 +118,9 @@ async def get_ewura_fuel_history(
 @router.get("/fuel/ewura/available-months", response_model=list[EwuraFuelAvailableMonthRead])
 async def get_ewura_available_months(
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    market_segment: Annotated[str, Query(pattern="^(retail|wholesale)$")] = "retail",
 ) -> list[EwuraFuelAvailableMonthRead]:
-    return await _fuel_service(db).get_available_months()
+    return await _fuel_service(db).get_available_months(market_segment=market_segment)
 
 
 @router.get("/fuel/ewura/filters", response_model=EwuraFuelFiltersRead)

@@ -17,16 +17,19 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
       <SectionHeader
         title={t("energy.filters")}
         description={
-          filters.latest_snapshot_month_label
+          filters.retail_latest_snapshot_month_label
             ? t("energy.filtersDescription", {
-                month: filters.latest_snapshot_month_label,
+                retailMonth: filters.retail_latest_snapshot_month_label,
+                wholesaleMonth:
+                  filters.wholesale_latest_snapshot_month_label ?? t("energy.notAvailable"),
               })
             : t("energy.filtersDescriptionFallback")
         }
       />
       <form
         action={ROUTES.energy}
-        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:grid-cols-4"
+        method="get"
+        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:grid-cols-5"
       >
         <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
           <span>{t("energy.fuelType")}</span>
@@ -56,12 +59,27 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
         <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
           <span>{t("energy.historyYear")}</span>
           <select
-            name="historyYear"
-            defaultValue={query.historyYear ? String(query.historyYear) : ""}
+            name="retailHistoryYear"
+            defaultValue={query.retailHistoryYear ? String(query.retailHistoryYear) : ""}
             className="w-full border-[3px] border-neutral-950 bg-white px-3 py-3 text-sm font-bold uppercase tracking-[0.08em] outline-none"
           >
-            <option value="">{t("energy.historyOnDemand")}</option>
-            {filters.history_years.map((year) => (
+            <option value="">{t("energy.retailHistoryOnDemand")}</option>
+            {filters.retail_history_years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
+          <span>{t("energy.wholesaleHistoryYear")}</span>
+          <select
+            name="wholesaleHistoryYear"
+            defaultValue={query.wholesaleHistoryYear ? String(query.wholesaleHistoryYear) : ""}
+            className="w-full border-[3px] border-neutral-950 bg-white px-3 py-3 text-sm font-bold uppercase tracking-[0.08em] outline-none"
+          >
+            <option value="">{t("energy.wholesaleHistoryOnDemand")}</option>
+            {filters.wholesale_history_years.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>

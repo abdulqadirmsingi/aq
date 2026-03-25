@@ -14,6 +14,7 @@ import type { EnergyPageData, EnergyQueryState } from "@/features/energy/types";
 import { apiFetch } from "./api-client";
 
 interface HistoryOptions {
+  marketSegment?: "retail" | "wholesale";
   year?: number;
   fuelType?: string;
   locationQuery?: string;
@@ -22,6 +23,7 @@ interface HistoryOptions {
 }
 
 interface LatestPricesOptions {
+  marketSegment?: "retail" | "wholesale";
   fuelType?: string;
   locationQuery?: string;
   limit?: number;
@@ -51,9 +53,13 @@ function emptyDashboardSummary(): EwuraFuelDashboardSummaryRead {
 function emptyFilters(): EwuraFuelFiltersRead {
   return {
     fuel_types: [],
-    history_years: [],
-    latest_snapshot_date: null,
-    latest_snapshot_month_label: null,
+    market_segments: [],
+    retail_history_years: [],
+    wholesale_history_years: [],
+    retail_latest_snapshot_date: null,
+    retail_latest_snapshot_month_label: null,
+    wholesale_latest_snapshot_date: null,
+    wholesale_latest_snapshot_month_label: null,
   };
 }
 
@@ -98,6 +104,7 @@ export async function getEnergyLatestPrices(
 ): Promise<EwuraFuelLatestPricePage> {
   return apiFetch<EwuraFuelLatestPricePage>(API_ENDPOINTS.energy.ewura.latestPrices, {
     query: {
+      market_segment: options.marketSegment ?? "retail",
       limit: options.limit ?? ENERGY_DEFAULTS.latestPricesLimit,
       offset: options.offset ?? 0,
       fuel_type: options.fuelType,
@@ -111,6 +118,7 @@ export async function getEnergyCurrentYearTrends(
 ): Promise<EwuraFuelMonthlyTrendRead[]> {
   return apiFetch<EwuraFuelMonthlyTrendRead[]>(API_ENDPOINTS.energy.ewura.currentYearTrends, {
     query: {
+      market_segment: options.marketSegment ?? "retail",
       year: options.year,
       fuel_type: options.fuelType,
     },
@@ -167,9 +175,11 @@ export async function getEnergyInsights(): Promise<EwuraFuelInsightRead[]> {
 export async function getEnergyPageData(query: EnergyQueryState): Promise<EnergyPageData> {
   const [
     dashboardSummary,
-    latestPrices,
+    retailLatestPrices,
+    wholesaleLatestPrices,
     currentYearTrends,
-    history,
+    retailHistory,
+    wholesaleHistory,
     filters,
     availableMonths,
     rollups,
@@ -180,23 +190,50 @@ export async function getEnergyPageData(query: EnergyQueryState): Promise<Energy
     safeRequest(
       () =>
         getEnergyLatestPrices({
+          marketSegment: "retail",
           fuelType: query.fuelType,
           locationQuery: query.locationQuery,
           limit: ENERGY_DEFAULTS.latestPricesLimit,
-          offset: query.latestOffset,
+          offset: query.retailLatestOffset,
+        }),
+      emptyLatestPricePage(),
+    ),
+    safeRequest(
+      () =>
+        getEnergyLatestPrices({
+          marketSegment: "wholesale",
+          fuelType: query.fuelType,
+          locationQuery: query.locationQuery,
+          limit: ENERGY_DEFAULTS.latestPricesLimit,
+          offset: query.wholesaleLatestOffset,
         }),
       emptyLatestPricePage(),
     ),
     safeRequest(() => getEnergyCurrentYearTrends({ fuelType: query.fuelType }), []),
     safeRequest(
       () =>
-        query.historyYear
+        query.retailHistoryYear
           ? getEnergyHistory({
-              year: query.historyYear,
+              marketSegment: "retail",
+              year: query.retailHistoryYear,
               fuelType: query.fuelType,
               locationQuery: query.locationQuery,
               limit: ENERGY_DEFAULTS.historyLimit,
-              offset: query.historyOffset,
+              offset: query.retailHistoryOffset,
+            })
+          : Promise.resolve(emptyObservationPage()),
+      emptyObservationPage(),
+    ),
+    safeRequest(
+      () =>
+        query.wholesaleHistoryYear
+          ? getEnergyHistory({
+              marketSegment: "wholesale",
+              year: query.wholesaleHistoryYear,
+              fuelType: query.fuelType,
+              locationQuery: query.locationQuery,
+              limit: ENERGY_DEFAULTS.historyLimit,
+              offset: query.wholesaleHistoryOffset,
             })
           : Promise.resolve(emptyObservationPage()),
       emptyObservationPage(),
@@ -210,9 +247,11 @@ export async function getEnergyPageData(query: EnergyQueryState): Promise<Energy
 
   return {
     dashboardSummary,
-    latestPrices,
+    retailLatestPrices,
+    wholesaleLatestPrices,
     currentYearTrends,
-    history,
+    retailHistory,
+    wholesaleHistory,
     filters,
     query,
     availableMonths,

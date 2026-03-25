@@ -9,10 +9,13 @@ import type { EnergyQueryState } from "../types";
 interface HistoryTableProps {
   history: EwuraFuelObservationPage;
   query: EnergyQueryState;
+  marketSegment: "retail" | "wholesale";
 }
 
-export async function HistoryTable({ history, query }: HistoryTableProps) {
+export async function HistoryTable({ history, query, marketSegment }: HistoryTableProps) {
   const t = await getTranslations();
+  const selectedYear =
+    marketSegment === "retail" ? query.retailHistoryYear : query.wholesaleHistoryYear;
 
   const columns = [
     {
@@ -48,14 +51,27 @@ export async function HistoryTable({ history, query }: HistoryTableProps) {
   return (
     <div>
       <SectionHeader
-        title={t("energy.history")}
+        title={
+          marketSegment === "retail"
+            ? t("energy.retailHistory")
+            : t("energy.wholesaleHistory")
+        }
         description={
-          query.historyYear
-            ? t("energy.historyDescription", {
+          selectedYear
+            ? t(
+                marketSegment === "retail"
+                  ? "energy.retailHistoryDescription"
+                  : "energy.wholesaleHistoryDescription",
+                {
                 count: history.meta.total,
-                year: query.historyYear,
-              })
-            : t("energy.historyOnDemandDescription")
+                year: selectedYear,
+              },
+            )
+            : t(
+                marketSegment === "retail"
+                  ? "energy.retailHistoryOnDemandDescription"
+                  : "energy.wholesaleHistoryOnDemandDescription",
+              )
         }
       />
       <DataTable
@@ -63,13 +79,21 @@ export async function HistoryTable({ history, query }: HistoryTableProps) {
         data={history.items}
         keyExtractor={(item) => item.id}
         emptyMessage={
-          query.historyYear ? t("common.noData") : t("energy.selectHistoryYear")
+          selectedYear
+            ? t("common.noData")
+            : t(
+                marketSegment === "retail"
+                  ? "energy.selectRetailHistoryYear"
+                  : "energy.selectWholesaleHistoryYear",
+              )
         }
       />
-      {query.historyYear ? (
+      {selectedYear ? (
         <TablePagination
           query={query}
-          offsetKey="historyOffset"
+          offsetKey={
+            marketSegment === "retail" ? "retailHistoryOffset" : "wholesaleHistoryOffset"
+          }
           limit={history.meta.limit}
           offset={history.meta.offset}
           total={history.meta.total}

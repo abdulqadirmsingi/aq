@@ -5,7 +5,11 @@ import type { EnergyQueryState } from "../types";
 
 interface TablePaginationProps {
   query: EnergyQueryState;
-  offsetKey: "latestOffset" | "historyOffset";
+  offsetKey:
+    | "retailLatestOffset"
+    | "retailHistoryOffset"
+    | "wholesaleLatestOffset"
+    | "wholesaleHistoryOffset";
   limit: number;
   offset: number;
   total: number;
@@ -24,14 +28,8 @@ export async function TablePagination({
   const start = total === 0 ? 0 : offset + 1;
   const end = Math.min(offset + limit, total);
   const previousOffset = Math.max(0, offset - limit);
-  const previousQuery =
-    offsetKey === "latestOffset"
-      ? { latestOffset: previousOffset }
-      : { historyOffset: previousOffset };
-  const nextQuery =
-    offsetKey === "latestOffset"
-      ? { latestOffset: offset + limit }
-      : { historyOffset: offset + limit };
+  const previousQuery = { [offsetKey]: previousOffset };
+  const nextQuery = { [offsetKey]: offset + limit };
 
   return (
     <div className="mt-4 flex flex-col gap-3 text-sm font-bold text-neutral-700 md:flex-row md:items-center md:justify-between">
