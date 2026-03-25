@@ -15,6 +15,7 @@ from app.modules.money.repositories.exchange_rate_repository import (
 from app.modules.money.schemas.exchange_rate import (
     BotExchangeRateFiltersRead,
     BotExchangeRateRead,
+    ExchangeRateLatestComparisonRead,
 )
 from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
@@ -62,3 +63,16 @@ async def get_bot_exchange_rate_filters(
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> BotExchangeRateFiltersRead:
     return await _exchange_rate_service(db).get_bot_filters()
+
+
+@router.get(
+    "/exchange-rates/latest-comparison",
+    response_model=ExchangeRateLatestComparisonRead,
+)
+async def get_latest_exchange_rate_comparison(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+) -> ExchangeRateLatestComparisonRead:
+    return await _exchange_rate_service(db).get_latest_comparison(
+        instrument_code=instrument_code
+    )

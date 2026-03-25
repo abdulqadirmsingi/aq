@@ -34,3 +34,26 @@ class BotExchangeRateFiltersRead(BaseModel):
     latest_snapshot_date: date | None
     latest_snapshot_month_label: str | None
     available_months: list[BotExchangeRateAvailableMonthRead]
+
+
+class ExchangeRateComparisonRead(BaseModel):
+    source_slug: str
+    source_name: str
+    snapshot_date: date
+    snapshot_month_label: str
+    instrument_code: str
+    instrument_name: str
+    quote_code: str
+    buy_rate: Decimal | None
+    sell_rate: Decimal | None
+    mean_rate: Decimal | None
+    source_effective_date: date | None
+    source_last_updated_at: datetime | None
+    market_scope: str
+    channel: str | None
+    created_at: datetime
+
+
+class ExchangeRateLatestComparisonRead(BaseModel):
+    instrument_code: str
+    items: list[ExchangeRateComparisonRead]

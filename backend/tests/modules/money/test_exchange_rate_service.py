@@ -4,6 +4,7 @@ from decimal import Decimal
 from app.modules.money.repositories.exchange_rate_repository import (
     BotExchangeRateMonthRecord,
     BotExchangeRateRecord,
+    ExchangeRateComparisonRecord,
 )
 from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
@@ -45,6 +46,45 @@ class _FakeExchangeRateRepository:
     async def list_bot_instruments(self) -> list[str]:
         return ["EUR", "USD"]
 
+    async def list_latest_source_comparison(
+        self,
+        **_: object,
+    ) -> list[ExchangeRateComparisonRecord]:
+        return [
+            ExchangeRateComparisonRecord(
+                source_slug="bot_exchange_rates",
+                source_name="Bank of Tanzania Exchange Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="USD",
+                quote_code="TZS",
+                buy_rate=Decimal("2557.8218"),
+                sell_rate=Decimal("2583.4000"),
+                mean_rate=Decimal("2570.6109"),
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=None,
+                market_scope="official_reference",
+                channel=None,
+                created_at=datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
+            ),
+            ExchangeRateComparisonRecord(
+                source_slug="crdb_forex",
+                source_name="CRDB Forex Rates",
+                snapshot_date=date(2026, 3, 25),
+                instrument_code="USD",
+                instrument_name="US DOLLAR",
+                quote_code="TZS",
+                buy_rate=Decimal("2535"),
+                sell_rate=Decimal("2615"),
+                mean_rate=None,
+                source_effective_date=date(2026, 3, 25),
+                source_last_updated_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
+                market_scope="commercial_bank",
+                channel="counter",
+                created_at=datetime(2026, 3, 25, 23, 17, tzinfo=UTC),
+            ),
+        ]
+
 
 async def test_list_bot_latest_maps_repository_rows() -> None:
     service = ExchangeRateService(_FakeExchangeRateRepository())
@@ -65,3 +105,17 @@ async def test_get_bot_filters_includes_month_labels() -> None:
     assert filters.instrument_codes == ["EUR", "USD"]
     assert filters.latest_snapshot_month_label == "March 2026"
     assert filters.available_months[0].month_label == "March 2026"
+
+
+async def test_get_latest_comparison_keeps_sources_separate() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    comparison = await service.get_latest_comparison(instrument_code="usd")
+
+    assert comparison.instrument_code == "USD"
+    assert [item.source_slug for item in comparison.items] == [
+        "bot_exchange_rates",
+        "crdb_forex",
+    ]
+    assert comparison.items[0].market_scope == "official_reference"
+    assert comparison.items[1].market_scope == "commercial_bank"

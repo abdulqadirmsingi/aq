@@ -12,6 +12,8 @@ from app.modules.money.schemas.exchange_rate import (
     BotExchangeRateAvailableMonthRead,
     BotExchangeRateFiltersRead,
     BotExchangeRateRead,
+    ExchangeRateComparisonRead,
+    ExchangeRateLatestComparisonRead,
 )
 
 
@@ -89,6 +91,38 @@ class ExchangeRateService:
                     observation_count=row.observation_count,
                 )
                 for row in available_months
+            ],
+        )
+
+    async def get_latest_comparison(
+        self,
+        *,
+        instrument_code: str,
+    ) -> ExchangeRateLatestComparisonRead:
+        rows = await self._repository.list_latest_source_comparison(
+            instrument_code=instrument_code
+        )
+        return ExchangeRateLatestComparisonRead(
+            instrument_code=instrument_code.upper(),
+            items=[
+                ExchangeRateComparisonRead(
+                    source_slug=row.source_slug,
+                    source_name=row.source_name,
+                    snapshot_date=row.snapshot_date,
+                    snapshot_month_label=self._month_label(row.snapshot_date) or "",
+                    instrument_code=row.instrument_code,
+                    instrument_name=row.instrument_name or row.instrument_code,
+                    quote_code=row.quote_code,
+                    buy_rate=row.buy_rate,
+                    sell_rate=row.sell_rate,
+                    mean_rate=row.mean_rate,
+                    source_effective_date=row.source_effective_date,
+                    source_last_updated_at=row.source_last_updated_at,
+                    market_scope=row.market_scope,
+                    channel=row.channel,
+                    created_at=row.created_at,
+                )
+                for row in rows
             ],
         )
 
