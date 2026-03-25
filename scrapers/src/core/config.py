@@ -1,6 +1,6 @@
 """Scraper configuration loaded from environment variables."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -61,7 +61,7 @@ class ScraperSettings(BaseSettings):
         description="Ignore EWURA documents older than this year.",
     )
     ewura_max_year: int = Field(
-        default_factory=lambda: datetime.now(timezone.utc).year,
+        default_factory=lambda: datetime.now(UTC).year,
         ge=2000,
         le=2100,
         description="Ignore EWURA documents newer than this year.",

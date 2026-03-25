@@ -7,10 +7,14 @@ from src.core.fingerprint_store import DocumentFingerprintStore
 from src.core.http_client import ScraperHttpClient
 from src.domains.money.exchange_rate_scraper import ExchangeRateScraper
 from src.domains.money.fx_persistence import ExchangeRatePersistenceStore
+from src.domains.money.nmb_live_fetch import (
+    fetch_nmb_daily_exchange_rates_html,
+)
 from src.domains.money.nmb_parser import (
     extract_latest_nmb_timestamp,
     infer_nmb_run_status,
     parse_nmb_daily_exchange_rates_html,
+    parse_nmb_daily_exchange_rates_markdown,
 )
 
 
@@ -45,15 +49,27 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
         super().__init__(persistence_store=persistence_store)
 
     def collect_observations(self):
-        html = self._http.get_text(self._listing_url)
-        return parse_nmb_daily_exchange_rates_html(html, source_url=self._listing_url)
+        fetch_result = fetch_nmb_daily_exchange_rates_html(
+            self._listing_url,
+            http_client=self._http,
+        )
+        observations = _parse_fetched_nmb_content(fetch_result)
+        if not observations:
+            raise ValueError(
+                "NMB page loaded but no exchange-rate observations were parsed."
+            )
+        return observations
 
     def run(self) -> dict[str, int | str | None]:
-        html = self._http.get_text(self._listing_url)
-        observations = parse_nmb_daily_exchange_rates_html(
-            html,
-            source_url=self._listing_url,
+        fetch_result = fetch_nmb_daily_exchange_rates_html(
+            self._listing_url,
+            http_client=self._http,
         )
+        observations = _parse_fetched_nmb_content(fetch_result)
+        if not observations:
+            raise ValueError(
+                "NMB page loaded but no exchange-rate observations were parsed."
+            )
         content_sha256 = (
             observations[0].ingestion_metadata.get("content_sha256")
             if observations
@@ -76,6 +92,7 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
                 "updated": 0,
                 "skipped": len(observations),
                 "latest_timestamp": extract_latest_nmb_timestamp(observations),
+                "used_browser_fallback": str(fetch_result.used_browser_fallback),
             }
 
         if self._persistence_store is None:
@@ -85,6 +102,7 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
                 "updated": 0,
                 "skipped": len(observations),
                 "latest_timestamp": extract_latest_nmb_timestamp(observations),
+                "used_browser_fallback": str(fetch_result.used_browser_fallback),
             }
 
         run_id = self._persistence_store.start_run(
@@ -106,7 +124,9 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
                 )
             run_metadata = {
                 "latest_timestamp": extract_latest_nmb_timestamp(observations),
-                "source_url": self._listing_url,
+                "source_url": fetch_result.source_url,
+                "used_browser_fallback": fetch_result.used_browser_fallback,
+                "content_format": fetch_result.content_format,
             }
             self._persistence_store.finish_run(
                 run_id,
@@ -135,6 +155,7 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
                 "updated": result.updated,
                 "skipped": result.skipped,
                 "latest_timestamp": extract_latest_nmb_timestamp(observations),
+                "used_browser_fallback": str(fetch_result.used_browser_fallback),
             }
         except Exception as exc:
             self._persistence_store.finish_run(
@@ -162,3 +183,15 @@ class NmbExchangeRateScraper(ExchangeRateScraper):
             self._fingerprint_store.close()
         if self._persistence_store is not None:
             self._persistence_store.close()
+
+
+def _parse_fetched_nmb_content(fetch_result) -> list:
+    if fetch_result.content_format == "markdown":
+        return parse_nmb_daily_exchange_rates_markdown(
+            fetch_result.content,
+            source_url=fetch_result.source_url,
+        )
+    return parse_nmb_daily_exchange_rates_html(
+        fetch_result.content,
+        source_url=fetch_result.source_url,
+    )

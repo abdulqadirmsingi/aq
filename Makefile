@@ -1,5 +1,5 @@
 .PHONY: help up down build logs migrate migrate-create seed lint format test test-backend test-frontend test-scrapers
-.PHONY: install-backend install-scrapers dev-backend celery-worker celery-beat celery-call-ewura celery-call-bot celery-call-crdb celery-call-nmb scraper-ewura-once scraper-bot-once scraper-crdb-once scraper-nmb-once
+.PHONY: install-backend install-scrapers install-scrapers-browser dev-backend celery-worker celery-beat celery-call-ewura celery-call-bot celery-call-crdb celery-call-nmb scraper-ewura-once scraper-bot-once scraper-crdb-once scraper-nmb-once
 
 # POSIX `sh` (dash): use `.` not `source` for venv activate.
 SHELL := /bin/sh
@@ -29,6 +29,10 @@ install-backend: ## Create backend/.venv and install backend deps
 install-scrapers: ## Create scrapers/.venv and install scraper deps
 	test -d scrapers/.venv || python3 -m venv scrapers/.venv
 	cd scrapers && . .venv/bin/activate && pip install -r requirements.txt
+
+install-scrapers-browser: ## Install browser automation extras for protected sources like NMB
+	test -d scrapers/.venv || python3 -m venv scrapers/.venv
+	cd scrapers && . .venv/bin/activate && pip install -r requirements.txt -r requirements-playwright.txt && playwright install chromium
 
 # ── Database (backend venv) ─────────────────────
 migrate: ## Run Alembic migrations (uses backend/.venv)
