@@ -17,6 +17,10 @@ class ScraperSettings(BaseSettings):
         default="https://www.ewura.go.tz/pages/petroleum-product-pricing",
         description="HTML page listing petroleum cap price PDFs/DOCX",
     )
+    bot_exchange_rates_url: str = Field(
+        default="https://www.bot.go.tz/exchangerate/excrates",
+        description="Bank of Tanzania daily exchange-rates table page.",
+    )
     http_timeout_seconds: float = Field(
         default=45.0,
         ge=1.0,
