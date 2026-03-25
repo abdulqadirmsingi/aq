@@ -45,7 +45,7 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
       <form
         action={ROUTES.energy}
         method="get"
-        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] lg:grid-cols-[1.1fr_1.4fr_1fr_1fr_auto]"
+        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] lg:grid-cols-[1.1fr_1.4fr_1fr_auto]"
       >
         <input type="hidden" name="tab" value={query.activeTab} />
         <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
@@ -82,21 +82,6 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
           >
             <option value="">{t("energy.retailHistoryOnDemand")}</option>
             {filters.retail_history_years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
-          <span>{t("energy.wholesaleHistoryYear")}</span>
-          <select
-            name="wholesaleHistoryYear"
-            defaultValue={query.wholesaleHistoryYear ? String(query.wholesaleHistoryYear) : ""}
-            className="w-full border-[3px] border-neutral-950 bg-white px-3 py-3 text-sm font-bold uppercase tracking-[0.08em] outline-none"
-          >
-            <option value="">{t("energy.wholesaleHistoryOnDemand")}</option>
-            {filters.wholesale_history_years.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>

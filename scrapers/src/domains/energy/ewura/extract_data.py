@@ -420,27 +420,33 @@ def _repair_location_spacing(value: str) -> str:
         token = tokens[idx]
         if idx + 1 < len(tokens):
             nxt = tokens[idx + 1]
-            if (
-                token.isalpha()
-                and nxt.isalpha()
-                and (
-                    (len(token) == 1 and len(nxt) >= 3)
-                    or (
-                        len(token) >= 4
-                        and 1 <= len(nxt) <= 4
-                        and nxt.casefold() not in connectors
-                    )
-                )
-            ):
+            if _should_merge_location_tokens(token, nxt, connectors):
                 token = f"{token}{nxt}"
                 idx += 1
         merged.append(token)
         idx += 1
 
     repaired = " ".join(merged)
+    repaired = re.sub(r"(?<=\w)\(", " (", repaired)
     repaired = re.sub(r"\(\s+", "(", repaired)
     repaired = re.sub(r"\s+\)", ")", repaired)
     return repaired.strip()
+
+
+def _should_merge_location_tokens(
+    left: str,
+    right: str,
+    connectors: set[str],
+) -> bool:
+    left_core = re.sub(r"^[^A-Za-z]+|[^A-Za-z']+$", "", left)
+    right_core = re.sub(r"^[^A-Za-z]+|[^A-Za-z']+$", "", right)
+    if not left_core or not right_core:
+        return False
+    if not left_core.replace("'", "").isalpha() or not right_core.replace("'", "").isalpha():
+        return False
+    if len(left_core) == 1 and len(right_core) >= 3:
+        return True
+    return right_core[0].islower() and right_core.casefold() not in connectors
 
 
 def _prices_look_plausible(prices: list[int]) -> bool:

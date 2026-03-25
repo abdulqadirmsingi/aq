@@ -167,6 +167,27 @@ def test_tables_to_fuel_records_skips_broken_continuation_text_rows() -> None:
     assert len(records) == 3
 
 
+def test_tables_to_fuel_records_repairs_only_obvious_broken_location_splits() -> None:
+    table = [
+        ["No.", "Regional/Town Centres", "Petrol", "Diesel", "Kerosene"],
+        ["1.", "Busok elo (lwangwa)", "2,928", "2,875", "2,913"],
+        ["2.", "Itigi (R ungwa)", "2,907", "2,855", "2,893"],
+        ["3.", "Arumeru (Usa River)", "2,887", "2,835", "2,872"],
+        ["4.", "Mvomero (Sanga Sanga)", "2,818", "2,766", "2,803"],
+    ]
+
+    records, _warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 1, 7),
+    )
+
+    locations = {record.location for record in records}
+    assert "Busokelo (lwangwa)" in locations
+    assert "Itigi (Rungwa)" in locations
+    assert "Arumeru (Usa River)" in locations
+    assert "Mvomero (Sanga Sanga)" in locations
+
+
 def test_fetch_and_parse_rejects_unknown_extension() -> None:
     ref = FilteredDocumentRef(
         url=(
