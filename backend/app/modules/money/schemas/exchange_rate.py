@@ -95,3 +95,114 @@ class ExchangeRateRecommendationRead(BaseModel):
     best_option: ExchangeRateRecommendationCandidateRead | None
     benchmark: ExchangeRateComparisonRead | None
     compared_options: list[ExchangeRateRecommendationCandidateRead]
+
+
+class ExchangeRateSpreadRead(BaseModel):
+    source_slug: str
+    source_name: str
+    snapshot_date: date
+    snapshot_month_label: str
+    instrument_code: str
+    instrument_name: str
+    buy_rate: Decimal
+    sell_rate: Decimal
+    spread: Decimal
+    spread_percent_of_buy: Decimal | None
+    market_scope: str
+    channel: str | None
+    cash_note_band: str | None
+    source_last_updated_at: datetime | None
+
+
+class ExchangeRateSpreadSummaryRead(BaseModel):
+    instrument_code: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    items: list[ExchangeRateSpreadRead]
+
+
+class ExchangeRateBenchmarkGapRead(BaseModel):
+    source_slug: str
+    source_name: str
+    snapshot_date: date
+    snapshot_month_label: str
+    instrument_code: str
+    instrument_name: str
+    comparison_basis: str
+    relevant_rate: Decimal
+    bot_mean_rate: Decimal
+    absolute_gap: Decimal
+    percent_gap: Decimal | None
+    market_scope: str
+    channel: str | None
+    cash_note_band: str | None
+
+
+class ExchangeRateBenchmarkGapSummaryRead(BaseModel):
+    instrument_code: str
+    customer_action: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    bot_mean_rate: Decimal | None
+    items: list[ExchangeRateBenchmarkGapRead]
+
+
+class ExchangeRateStalenessRead(BaseModel):
+    source_slug: str
+    source_name: str
+    instrument_code: str
+    snapshot_date: date
+    source_effective_date: date | None
+    source_last_updated_at: datetime | None
+    data_timestamp: datetime
+    lag_hours_vs_freshest: Decimal
+    is_freshest: bool
+    market_scope: str
+    channel: str | None
+    cash_note_band: str | None
+
+
+class ExchangeRateStalenessSummaryRead(BaseModel):
+    instrument_code: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    freshest_timestamp: datetime | None
+    items: list[ExchangeRateStalenessRead]
+
+
+class ExchangeRateBestRateRead(BaseModel):
+    customer_action: str
+    best_option: ExchangeRateRecommendationCandidateRead | None
+    benchmark: ExchangeRateComparisonRead | None
+
+
+class ExchangeRateBestRateSummaryRead(BaseModel):
+    instrument_code: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    buy_forex: ExchangeRateBestRateRead
+    sell_forex: ExchangeRateBestRateRead
+
+
+class ExchangeRateOpportunityRead(BaseModel):
+    customer_action: str
+    best_source_slug: str
+    best_source_name: str
+    compared_source_slug: str
+    compared_source_name: str
+    instrument_code: str
+    relevant_rate: Decimal
+    best_rate: Decimal
+    absolute_difference: Decimal
+    percent_difference: Decimal | None
+    channel: str | None
+    cash_note_band: str | None
+
+
+class ExchangeRateOpportunitySummaryRead(BaseModel):
+    instrument_code: str
+    customer_action: str
+    channel: str | None = None
+    cash_note_band: str | None = None
+    best_source_slug: str | None
+    opportunities: list[ExchangeRateOpportunityRead]

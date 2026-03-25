@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from app.common.pagination import Page, build_page
 from app.modules.money.repositories.exchange_rate_repository import (
@@ -12,10 +13,20 @@ from app.modules.money.schemas.exchange_rate import (
     BotExchangeRateAvailableMonthRead,
     BotExchangeRateFiltersRead,
     BotExchangeRateRead,
+    ExchangeRateBenchmarkGapRead,
+    ExchangeRateBenchmarkGapSummaryRead,
+    ExchangeRateBestRateRead,
+    ExchangeRateBestRateSummaryRead,
     ExchangeRateComparisonRead,
     ExchangeRateLatestComparisonRead,
+    ExchangeRateOpportunityRead,
+    ExchangeRateOpportunitySummaryRead,
     ExchangeRateRecommendationCandidateRead,
     ExchangeRateRecommendationRead,
+    ExchangeRateSpreadRead,
+    ExchangeRateSpreadSummaryRead,
+    ExchangeRateStalenessRead,
+    ExchangeRateStalenessSummaryRead,
 )
 
 
@@ -203,6 +214,269 @@ class ExchangeRateService:
                 else None
             ),
             compared_options=candidates,
+        )
+
+    async def get_spread_summary(
+        self,
+        *,
+        instrument_code: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+    ) -> ExchangeRateSpreadSummaryRead:
+        rows = await self._repository.list_latest_source_comparison(
+            instrument_code=instrument_code,
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        items = []
+        for row in rows:
+            if row.buy_rate is None or row.sell_rate is None:
+                continue
+            spread = row.sell_rate - row.buy_rate
+            spread_percent = (
+                (spread / row.buy_rate) * Decimal("100")
+                if row.buy_rate != 0
+                else None
+            )
+            items.append(
+                ExchangeRateSpreadRead(
+                    source_slug=row.source_slug,
+                    source_name=row.source_name,
+                    snapshot_date=row.snapshot_date,
+                    snapshot_month_label=self._month_label(row.snapshot_date) or "",
+                    instrument_code=row.instrument_code,
+                    instrument_name=row.instrument_name or row.instrument_code,
+                    buy_rate=row.buy_rate,
+                    sell_rate=row.sell_rate,
+                    spread=spread,
+                    spread_percent_of_buy=spread_percent,
+                    market_scope=row.market_scope,
+                    channel=row.channel,
+                    cash_note_band=row.cash_note_band,
+                    source_last_updated_at=row.source_last_updated_at,
+                )
+            )
+        items.sort(key=lambda item: item.spread)
+        return ExchangeRateSpreadSummaryRead(
+            instrument_code=instrument_code.upper(),
+            channel=channel,
+            cash_note_band=cash_note_band,
+            items=items,
+        )
+
+    async def get_benchmark_gap_summary(
+        self,
+        *,
+        instrument_code: str,
+        customer_action: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+    ) -> ExchangeRateBenchmarkGapSummaryRead:
+        rows = await self._repository.list_latest_source_comparison(
+            instrument_code=instrument_code,
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        benchmark_row = next(
+            (row for row in rows if row.source_slug == "bot_exchange_rates"),
+            None,
+        )
+        bot_mean_rate = benchmark_row.mean_rate if benchmark_row is not None else None
+        comparison_basis = "sell_rate" if customer_action == "buy" else "buy_rate"
+        items = []
+        for row in rows:
+            if row.source_slug == "bot_exchange_rates":
+                continue
+            relevant_rate = row.sell_rate if customer_action == "buy" else row.buy_rate
+            if relevant_rate is None or bot_mean_rate is None:
+                continue
+            absolute_gap = relevant_rate - bot_mean_rate
+            percent_gap = (
+                (absolute_gap / bot_mean_rate) * Decimal("100")
+                if bot_mean_rate != 0
+                else None
+            )
+            items.append(
+                ExchangeRateBenchmarkGapRead(
+                    source_slug=row.source_slug,
+                    source_name=row.source_name,
+                    snapshot_date=row.snapshot_date,
+                    snapshot_month_label=self._month_label(row.snapshot_date) or "",
+                    instrument_code=row.instrument_code,
+                    instrument_name=row.instrument_name or row.instrument_code,
+                    comparison_basis=comparison_basis,
+                    relevant_rate=relevant_rate,
+                    bot_mean_rate=bot_mean_rate,
+                    absolute_gap=absolute_gap,
+                    percent_gap=percent_gap,
+                    market_scope=row.market_scope,
+                    channel=row.channel,
+                    cash_note_band=row.cash_note_band,
+                )
+            )
+        return ExchangeRateBenchmarkGapSummaryRead(
+            instrument_code=instrument_code.upper(),
+            customer_action=customer_action,
+            channel=channel,
+            cash_note_band=cash_note_band,
+            bot_mean_rate=bot_mean_rate,
+            items=items,
+        )
+
+    async def get_staleness_summary(
+        self,
+        *,
+        instrument_code: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+    ) -> ExchangeRateStalenessSummaryRead:
+        rows = await self._repository.list_latest_source_comparison(
+            instrument_code=instrument_code,
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        timestamps = [
+            row.source_last_updated_at
+            or datetime.combine(
+                row.snapshot_date,
+                datetime.min.time(),
+                tzinfo=UTC,
+            )
+            for row in rows
+        ]
+        freshest = max(timestamps) if timestamps else None
+        items = []
+        for row in rows:
+            data_timestamp = row.source_last_updated_at or datetime.combine(
+                row.snapshot_date,
+                datetime.min.time(),
+                tzinfo=UTC,
+            )
+            lag_hours = Decimal("0")
+            if freshest is not None:
+                lag_seconds = (freshest - data_timestamp).total_seconds()
+                lag_hours = Decimal(str(lag_seconds / 3600))
+            items.append(
+                ExchangeRateStalenessRead(
+                    source_slug=row.source_slug,
+                    source_name=row.source_name,
+                    instrument_code=row.instrument_code,
+                    snapshot_date=row.snapshot_date,
+                    source_effective_date=row.source_effective_date,
+                    source_last_updated_at=row.source_last_updated_at,
+                    data_timestamp=data_timestamp,
+                    lag_hours_vs_freshest=lag_hours,
+                    is_freshest=lag_hours == 0,
+                    market_scope=row.market_scope,
+                    channel=row.channel,
+                    cash_note_band=row.cash_note_band,
+                )
+            )
+        items.sort(key=lambda item: item.lag_hours_vs_freshest)
+        return ExchangeRateStalenessSummaryRead(
+            instrument_code=instrument_code.upper(),
+            channel=channel,
+            cash_note_band=cash_note_band,
+            freshest_timestamp=freshest,
+            items=items,
+        )
+
+    async def get_best_rate_summary(
+        self,
+        *,
+        instrument_code: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+    ) -> ExchangeRateBestRateSummaryRead:
+        buy_forex = await self.get_recommendation(
+            instrument_code=instrument_code,
+            customer_action="buy",
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        sell_forex = await self.get_recommendation(
+            instrument_code=instrument_code,
+            customer_action="sell",
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        return ExchangeRateBestRateSummaryRead(
+            instrument_code=instrument_code.upper(),
+            channel=channel,
+            cash_note_band=cash_note_band,
+            buy_forex=ExchangeRateBestRateRead(
+                customer_action="buy",
+                best_option=buy_forex.best_option,
+                benchmark=buy_forex.benchmark,
+            ),
+            sell_forex=ExchangeRateBestRateRead(
+                customer_action="sell",
+                best_option=sell_forex.best_option,
+                benchmark=sell_forex.benchmark,
+            ),
+        )
+
+    async def get_opportunity_summary(
+        self,
+        *,
+        instrument_code: str,
+        customer_action: str,
+        channel: str | None = None,
+        cash_note_band: str | None = None,
+    ) -> ExchangeRateOpportunitySummaryRead:
+        recommendation = await self.get_recommendation(
+            instrument_code=instrument_code,
+            customer_action=customer_action,
+            channel=channel,
+            cash_note_band=cash_note_band,
+        )
+        best_option = recommendation.best_option
+        if best_option is None:
+            return ExchangeRateOpportunitySummaryRead(
+                instrument_code=instrument_code.upper(),
+                customer_action=customer_action,
+                channel=channel,
+                cash_note_band=cash_note_band,
+                best_source_slug=None,
+                opportunities=[],
+            )
+        opportunities = []
+        for option in recommendation.compared_options:
+            if option.source_slug == best_option.source_slug:
+                continue
+            absolute_difference = (
+                option.relevant_rate - best_option.relevant_rate
+                if customer_action == "buy"
+                else best_option.relevant_rate - option.relevant_rate
+            )
+            percent_difference = (
+                (absolute_difference / best_option.relevant_rate) * Decimal("100")
+                if best_option.relevant_rate != 0
+                else None
+            )
+            opportunities.append(
+                ExchangeRateOpportunityRead(
+                    customer_action=customer_action,
+                    best_source_slug=best_option.source_slug,
+                    best_source_name=best_option.source_name,
+                    compared_source_slug=option.source_slug,
+                    compared_source_name=option.source_name,
+                    instrument_code=option.instrument_code,
+                    relevant_rate=option.relevant_rate,
+                    best_rate=best_option.relevant_rate,
+                    absolute_difference=absolute_difference,
+                    percent_difference=percent_difference,
+                    channel=option.channel,
+                    cash_note_band=option.cash_note_band,
+                )
+            )
+        return ExchangeRateOpportunitySummaryRead(
+            instrument_code=instrument_code.upper(),
+            customer_action=customer_action,
+            channel=channel,
+            cash_note_band=cash_note_band,
+            best_source_slug=best_option.source_slug,
+            opportunities=opportunities,
         )
 
     def _to_read(self, snapshot_date: date, row) -> BotExchangeRateRead:

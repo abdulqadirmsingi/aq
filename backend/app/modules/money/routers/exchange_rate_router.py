@@ -15,8 +15,13 @@ from app.modules.money.repositories.exchange_rate_repository import (
 from app.modules.money.schemas.exchange_rate import (
     BotExchangeRateFiltersRead,
     BotExchangeRateRead,
+    ExchangeRateBenchmarkGapSummaryRead,
+    ExchangeRateBestRateSummaryRead,
     ExchangeRateLatestComparisonRead,
+    ExchangeRateOpportunitySummaryRead,
     ExchangeRateRecommendationRead,
+    ExchangeRateSpreadSummaryRead,
+    ExchangeRateStalenessSummaryRead,
 )
 from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
@@ -101,4 +106,93 @@ async def get_exchange_rate_recommendation(
         channel=channel,
         cash_note_band=cash_note_band,
         include_bot_as_option=include_bot_as_option,
+    )
+
+
+@router.get(
+    "/exchange-rates/analytics/spreads",
+    response_model=ExchangeRateSpreadSummaryRead,
+)
+async def get_exchange_rate_spreads(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+) -> ExchangeRateSpreadSummaryRead:
+    return await _exchange_rate_service(db).get_spread_summary(
+        instrument_code=instrument_code,
+        channel=channel,
+        cash_note_band=cash_note_band,
+    )
+
+
+@router.get(
+    "/exchange-rates/analytics/benchmark-gaps",
+    response_model=ExchangeRateBenchmarkGapSummaryRead,
+)
+async def get_exchange_rate_benchmark_gaps(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    customer_action: Annotated[str, Query(pattern="^(buy|sell)$")],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+) -> ExchangeRateBenchmarkGapSummaryRead:
+    return await _exchange_rate_service(db).get_benchmark_gap_summary(
+        instrument_code=instrument_code,
+        customer_action=customer_action,
+        channel=channel,
+        cash_note_band=cash_note_band,
+    )
+
+
+@router.get(
+    "/exchange-rates/analytics/staleness",
+    response_model=ExchangeRateStalenessSummaryRead,
+)
+async def get_exchange_rate_staleness(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+) -> ExchangeRateStalenessSummaryRead:
+    return await _exchange_rate_service(db).get_staleness_summary(
+        instrument_code=instrument_code,
+        channel=channel,
+        cash_note_band=cash_note_band,
+    )
+
+
+@router.get(
+    "/exchange-rates/analytics/best-rates",
+    response_model=ExchangeRateBestRateSummaryRead,
+)
+async def get_exchange_rate_best_rates(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+) -> ExchangeRateBestRateSummaryRead:
+    return await _exchange_rate_service(db).get_best_rate_summary(
+        instrument_code=instrument_code,
+        channel=channel,
+        cash_note_band=cash_note_band,
+    )
+
+
+@router.get(
+    "/exchange-rates/analytics/opportunities",
+    response_model=ExchangeRateOpportunitySummaryRead,
+)
+async def get_exchange_rate_opportunities(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)],
+    customer_action: Annotated[str, Query(pattern="^(buy|sell)$")],
+    channel: Annotated[str | None, Query()] = None,
+    cash_note_band: Annotated[str | None, Query()] = None,
+) -> ExchangeRateOpportunitySummaryRead:
+    return await _exchange_rate_service(db).get_opportunity_summary(
+        instrument_code=instrument_code,
+        customer_action=customer_action,
+        channel=channel,
+        cash_note_band=cash_note_band,
     )

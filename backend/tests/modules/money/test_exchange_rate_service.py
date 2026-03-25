@@ -225,3 +225,57 @@ async def test_get_recommendation_can_target_nmb_cash_band() -> None:
     assert recommendation.best_option is not None
     assert recommendation.best_option.source_slug == "nmb_daily_exchange_rates"
     assert recommendation.best_option.cash_note_band == "notes_1_20"
+
+
+async def test_get_spread_summary_orders_smallest_spread_first() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    summary = await service.get_spread_summary(instrument_code="usd")
+
+    assert summary.items[0].source_slug == "bot_exchange_rates"
+    assert summary.items[0].spread == Decimal("25.5782")
+
+
+async def test_get_benchmark_gap_summary_uses_bot_mean_as_reference() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    summary = await service.get_benchmark_gap_summary(
+        instrument_code="usd",
+        customer_action="buy",
+    )
+
+    assert summary.bot_mean_rate == Decimal("2570.6109")
+    assert any(item.source_slug == "crdb_forex" for item in summary.items)
+
+
+async def test_get_staleness_summary_marks_freshest_source() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    summary = await service.get_staleness_summary(instrument_code="usd")
+
+    assert summary.freshest_timestamp is not None
+    assert summary.items[0].is_freshest is True
+
+
+async def test_get_best_rate_summary_returns_buy_and_sell_views() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    summary = await service.get_best_rate_summary(instrument_code="usd")
+
+    assert summary.buy_forex.best_option is not None
+    assert summary.sell_forex.best_option is not None
+
+
+async def test_get_opportunity_summary_compares_against_best_source() -> None:
+    service = ExchangeRateService(_FakeExchangeRateRepository())
+
+    summary = await service.get_opportunity_summary(
+        instrument_code="usd",
+        customer_action="buy",
+    )
+
+    assert summary.best_source_slug == "crdb_forex"
+    assert all(
+        opportunity.best_source_slug == "crdb_forex"
+        for opportunity in summary.opportunities
+    )
