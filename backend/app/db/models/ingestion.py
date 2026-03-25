@@ -31,7 +31,11 @@ class ScraperRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     scraper_name: Mapped[str] = mapped_column(String(120), nullable=False)
     trigger_type: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[ScraperRunStatus] = mapped_column(
-        Enum(ScraperRunStatus, name="scraper_run_status_enum"),
+        Enum(
+            ScraperRunStatus,
+            name="scraper_run_status_enum",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=ScraperRunStatus.PENDING,
         server_default=ScraperRunStatus.PENDING.value,

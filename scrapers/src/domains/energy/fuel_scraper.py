@@ -92,6 +92,14 @@ class EwuraFuelScraper(BaseScraper):
                 and self._settings.ewura_skip_successful_urls
                 and fingerprint_store.url_parse_succeeded(url)
             ):
+                if persistence_store is not None and scraper_run_id is not None:
+                    persistence_store.log_event(
+                        scraper_run_id=scraper_run_id,
+                        level="info",
+                        event_type="ewura_document_skipped",
+                        message="Skipped previously successful URL.",
+                        details={"document_url": url, "reason": "skipped_known_url"},
+                    )
                 outcomes.append(
                     EwuraParseOutcome(
                         ok=False,
@@ -108,6 +116,14 @@ class EwuraFuelScraper(BaseScraper):
                 max_bytes=self._max_document_bytes(),
             )
             if isinstance(step, EwuraParseOutcome):
+                if persistence_store is not None and scraper_run_id is not None:
+                    persistence_store.log_event(
+                        scraper_run_id=scraper_run_id,
+                        level="warning",
+                        event_type="ewura_document_failed",
+                        message="Document download or dispatch failed.",
+                        details={"document_url": url, "error": step.error},
+                    )
                 outcomes.append(step)
                 continue
             raw, sha, ext = step
@@ -127,6 +143,14 @@ class EwuraFuelScraper(BaseScraper):
                         error="skipped_duplicate_hash",
                     ),
                 )
+                if persistence_store is not None and scraper_run_id is not None:
+                    persistence_store.log_event(
+                        scraper_run_id=scraper_run_id,
+                        level="info",
+                        event_type="ewura_document_skipped",
+                        message="Skipped previously successful document hash.",
+                        details={"document_url": url, "reason": "skipped_duplicate_hash"},
+                    )
                 continue
 
             outcome = parse_cap_price_bulletin_bytes(raw, ext, ref, sha)
@@ -147,6 +171,20 @@ class EwuraFuelScraper(BaseScraper):
                         error="outside_date_window",
                     ),
                 )
+                if persistence_store is not None and scraper_run_id is not None:
+                    persistence_store.log_event(
+                        scraper_run_id=scraper_run_id,
+                        level="info",
+                        event_type="ewura_document_skipped",
+                        message="Skipped document outside configured year window.",
+                        details={
+                            "document_url": url,
+                            "reason": "outside_date_window",
+                            "published_date": (
+                                outcome.payload.published_date if outcome.payload else None
+                            ),
+                        },
+                    )
                 continue
             if fingerprint_store and outcome.payload is not None:
                 fingerprint_store.upsert(
@@ -162,10 +200,32 @@ class EwuraFuelScraper(BaseScraper):
                 and persistence_store is not None
                 and source_id is not None
             ):
-                self._last_inserted_count += persistence_store.persist_payload(
+                inserted = persistence_store.persist_payload(
                     outcome.payload,
                     scraper_run_id=scraper_run_id,
                     source_id=source_id,
+                )
+                self._last_inserted_count += inserted
+                if scraper_run_id is not None:
+                    persistence_store.log_event(
+                        scraper_run_id=scraper_run_id,
+                        level="info",
+                        event_type="ewura_document_ingested",
+                        message="Document parsed and normalized successfully.",
+                        details={
+                            "document_url": url,
+                            "records_extracted": len(outcome.payload.data),
+                            "records_inserted": inserted,
+                            "published_date": outcome.payload.published_date,
+                        },
+                    )
+            elif persistence_store is not None and scraper_run_id is not None:
+                persistence_store.log_event(
+                    scraper_run_id=scraper_run_id,
+                    level="warning",
+                    event_type="ewura_document_failed",
+                    message="Document parsed but no normalized rows were stored.",
+                    details={"document_url": url, "error": outcome.error},
                 )
             outcomes.append(outcome)
         return outcomes
@@ -192,6 +252,14 @@ class EwuraFuelScraper(BaseScraper):
                 source_id=source_id,
             )
             if persistence_store is not None and run_id is not None:
+                run_metadata = {
+                    "documents_attempted": len(outcomes),
+                    "documents_ok": sum(1 for o in outcomes if o.ok),
+                    "documents_skipped": sum(1 for o in outcomes if o.skipped),
+                    "documents_failed": sum(
+                        1 for o in outcomes if not o.ok and not o.skipped
+                    ),
+                }
                 persistence_store.finish_run(
                     run_id,
                     status=infer_run_status(outcomes),
@@ -202,14 +270,14 @@ class EwuraFuelScraper(BaseScraper):
                     ),
                     records_inserted=self._last_inserted_count,
                     records_rejected=sum(1 for o in outcomes if not o.ok and not o.skipped),
-                    run_metadata={
-                        "documents_attempted": len(outcomes),
-                        "documents_ok": sum(1 for o in outcomes if o.ok),
-                        "documents_skipped": sum(1 for o in outcomes if o.skipped),
-                        "documents_failed": sum(
-                            1 for o in outcomes if not o.ok and not o.skipped
-                        ),
-                    },
+                    run_metadata=run_metadata,
+                )
+                persistence_store.log_event(
+                    scraper_run_id=run_id,
+                    level="info",
+                    event_type="ewura_run_completed",
+                    message="EWURA run completed.",
+                    details=run_metadata,
                 )
         except Exception as exc:
             if persistence_store is not None and run_id is not None:
@@ -220,6 +288,13 @@ class EwuraFuelScraper(BaseScraper):
                     records_inserted=0,
                     records_rejected=0,
                     error_message=str(exc),
+                )
+                persistence_store.log_event(
+                    scraper_run_id=run_id,
+                    level="error",
+                    event_type="ewura_run_failed",
+                    message="EWURA run failed with an exception.",
+                    details={"error": str(exc)},
                 )
             raise
         finally:

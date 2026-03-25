@@ -1,5 +1,3 @@
-"use client";
-
 import type { DomainSummary } from "@/types";
 import { SummaryCards } from "./components/summary-cards";
 

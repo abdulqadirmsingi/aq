@@ -1,4 +1,3 @@
-import { fuelPrices } from "@/data/energy";
 import { salaries } from "@/data/hr";
 import { rentPrices } from "@/data/living-cost";
 import { drugPrices } from "@/data/medicine";
@@ -6,12 +5,31 @@ import { exchangeRates } from "@/data/money";
 import { computeChangePercent, computeTrend, formatNumber } from "@/lib/utils";
 import type { DomainSummary } from "@/types";
 import { simulateFetch } from "./api-client";
+import { getEnergyDashboardSummary } from "./energy";
 
-function buildSummaries(): DomainSummary[] {
-  const avgFuel =
-    fuelPrices.reduce((sum, f) => sum + f.pricePerLitre, 0) / fuelPrices.length;
-  const avgFuelPrev =
-    fuelPrices.reduce((sum, f) => sum + f.previousPrice, 0) / fuelPrices.length;
+function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashboardSummary>>) {
+  const summaryItems = summary.latest_summary?.items ?? [];
+  const currentAverage =
+    summaryItems.length > 0
+      ? summaryItems.reduce((sum, item) => sum + item.avg_price, 0) / summaryItems.length
+      : 0;
+  const previousPrices = summary.latest_prices_preview
+    .map((item) => item.previous_price)
+    .filter((item): item is number => item !== null);
+  const previousAverage =
+    previousPrices.length > 0
+      ? previousPrices.reduce((sum, item) => sum + item, 0) / previousPrices.length
+      : currentAverage;
+
+  return { currentAverage, previousAverage };
+}
+
+function buildSummaries(
+  fuelSummary: Awaited<ReturnType<typeof getEnergyDashboardSummary>> | null,
+): DomainSummary[] {
+  const { currentAverage, previousAverage } = fuelSummary
+    ? getFuelSummaryMetrics(fuelSummary)
+    : { currentAverage: 0, previousAverage: 0 };
 
   const usd = exchangeRates.find((r) => r.currencyPair === "USD/TZS");
 
@@ -29,9 +47,9 @@ function buildSummaries(): DomainSummary[] {
   return [
     {
       label: "dashboard.fuelAvgPrice",
-      value: `${formatNumber(Math.round(avgFuel))} TZS`,
-      change: computeChangePercent(avgFuel, avgFuelPrev),
-      trend: computeTrend(avgFuel, avgFuelPrev),
+      value: currentAverage > 0 ? `${formatNumber(Math.round(currentAverage))} TZS` : "N/A",
+      change: computeChangePercent(currentAverage, previousAverage),
+      trend: computeTrend(currentAverage, previousAverage),
     },
     {
       label: "dashboard.exchangeRate",
@@ -61,5 +79,6 @@ function buildSummaries(): DomainSummary[] {
 }
 
 export async function getDashboardSummaries(): Promise<DomainSummary[]> {
-  return simulateFetch(buildSummaries());
+  const fuelSummary = await getEnergyDashboardSummary().catch(() => null);
+  return simulateFetch(buildSummaries(fuelSummary));
 }

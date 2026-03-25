@@ -24,12 +24,14 @@ class FilteredDocumentRef(BaseModel):
 
 
 FuelType = Literal["petrol", "diesel", "kerosene"]
+FuelMarketSegment = Literal["retail", "wholesale"]
 
 
 class FuelPriceRecord(BaseModel):
-    """One observation per location and fuel type (retail cap)."""
+    """One observation per location, market segment, and fuel type."""
 
     location: str = Field(max_length=200)
+    market_segment: FuelMarketSegment = "retail"
     fuel_type: FuelType
     price: int = Field(ge=0)
     unit: str = Field(default="TZS/Litre", max_length=32)

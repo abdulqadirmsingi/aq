@@ -1,5 +1,3 @@
-"use client";
-
 import type { LandPrice, RentPrice } from "@/types/api";
 import { LandTable } from "./components/land-table";
 import { RentTable } from "./components/rent-table";

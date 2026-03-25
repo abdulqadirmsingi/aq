@@ -63,5 +63,8 @@ docker-compose.override.yml
 *.pid
 *.seed
 tmp/
+scrapers/celerybeat-schedule
+scrapers/celerybeat-schedule-shm
+scrapers/celerybeat-schedule-wal
 
 .pnpm-store/

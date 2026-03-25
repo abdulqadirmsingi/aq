@@ -46,11 +46,23 @@ def extract_tables_from_pdf(
 
 
 def _extract_tables_from_page(page: pdfplumber.page.Page) -> list[list[list[Any]]]:
+    tables: list[list[list[Any]]] = []
+    seen: set[tuple[tuple[str, ...], ...]] = set()
     for settings in _TABLE_SETTINGS:
-        tables = page.extract_tables(table_settings=settings) or []
-        if tables:
-            return tables
-    return []
+        for table in page.extract_tables(table_settings=settings) or []:
+            fingerprint = _table_fingerprint(table)
+            if fingerprint in seen:
+                continue
+            seen.add(fingerprint)
+            tables.append(table)
+    return tables
+
+
+def _table_fingerprint(table: list[list[Any]]) -> tuple[tuple[str, ...], ...]:
+    return tuple(
+        tuple("" if cell is None else str(cell).strip() for cell in row)
+        for row in table
+    )
 
 
 def _normalize_pdf_cell(cell: object | None) -> str | None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from io import BytesIO
 
 import httpx
@@ -14,6 +15,7 @@ from src.core.http_client import ScraperHttpClient
 from src.domains.energy.ewura.document_pipeline import (
     fetch_and_parse_cap_price_document,
 )
+from src.domains.energy.ewura.extract_data import tables_to_fuel_records
 from src.domains.energy.ewura.headers import HeaderDetector
 from src.domains.energy.ewura.models import FilteredDocumentRef
 from src.domains.energy.ewura.numbers import parse_price_cell
@@ -110,6 +112,101 @@ def test_parse_cap_price_pdf_bytes_synthetic() -> None:
     kinds = {r.fuel_type for r in out.payload.data}
     assert "petrol" in kinds and "diesel" in kinds
     assert all(r.price < 100_000 for r in out.payload.data)
+
+
+def test_tables_to_fuel_records_combines_split_location_columns() -> None:
+    table = [
+        ["S.No", None, "Town", None, None, None],
+        [None, None, None, "Petrol", "Diesel", "Kerosene"],
+        ["56", "Uvinza (Lugufu", ")", "3,051", "3,046", "3,120"],
+        ["57", "Muyobozi Villa", "ge (Uvinza)", "3,063", "3,058", "3,132"],
+    ]
+
+    records, warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 3, 4),
+    )
+
+    assert warnings == []
+    locations = {record.location for record in records}
+    assert "Uvinza (Lugufu)" in locations
+    assert "Muyobozi Village (Uvinza)" in locations
+
+
+def test_tables_to_fuel_records_does_not_shift_prices_left() -> None:
+    table = [
+        ["No.", "Regional/Town Centres", "Petrol", "Diesel", "Kerosene"],
+        ["1.", "Arusha", "2,887", "2,835", "2,872"],
+    ]
+
+    records, _warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 1, 7),
+    )
+
+    by_fuel = {record.fuel_type: record.price for record in records}
+    assert by_fuel == {"petrol": 2887, "diesel": 2835, "kerosene": 2872}
+
+
+def test_tables_to_fuel_records_skips_broken_continuation_text_rows() -> None:
+    wholesale_table = [
+        ["Port", "Petrol", None, None, "Diesel", None, None, "Kerosene", None, None],
+        ["Dar es Salaam", None, "2,723.97", None, None, "2,718.21", None, None, "2,792.70", None],
+    ]
+    broken_text_fragment = [
+        ["Dar es Salaa", "m 2", ",723.97", None, "2,718.21", "2", ",792", ".70"],
+    ]
+
+    records, warnings = tables_to_fuel_records(
+        [wholesale_table, broken_text_fragment],
+        effective_date=date(2026, 3, 4),
+    )
+
+    assert "table_1_continuation" not in warnings
+    assert {record.location for record in records} == {"Dar es Salaam"}
+    assert len(records) == 3
+
+
+def test_tables_to_fuel_records_repairs_only_obvious_broken_location_splits() -> None:
+    table = [
+        ["No.", "Regional/Town Centres", "Petrol", "Diesel", "Kerosene"],
+        ["1.", "Busok elo (lwangwa)", "2,928", "2,875", "2,913"],
+        ["2.", "Itigi (R ungwa)", "2,907", "2,855", "2,893"],
+        ["3.", "Arumeru (Usa River)", "2,887", "2,835", "2,872"],
+        ["4.", "Mvomero (Sanga Sanga)", "2,818", "2,766", "2,803"],
+    ]
+
+    records, _warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 1, 7),
+    )
+
+    locations = {record.location for record in records}
+    assert "Busokelo (lwangwa)" in locations
+    assert "Itigi (Rungwa)" in locations
+    assert "Arumeru (Usa River)" in locations
+    assert "Mvomero (Sanga Sanga)" in locations
+
+
+def test_tables_to_fuel_records_merges_parenthetical_suffix_rows() -> None:
+    table = [
+        ["No.", "Regional/Town Centres", "Petrol", "Diesel", "Kerosene"],
+        ["90.", "Tarime", "2,990", "2,938", "2,976"],
+        ["91.", "(Kewanja/Nyamongo)", "2,996", "2,944", "2,981"],
+        ["134.", "Wanging'ombe", "2,893", "2,841", "2,879"],
+        ["135.", "(Igwachanya)", "2,893", "2,841", "2,879"],
+    ]
+
+    records, _warnings = tables_to_fuel_records(
+        [table],
+        effective_date=date(2026, 1, 7),
+    )
+
+    locations = {record.location for record in records}
+    assert "Tarime (Kewanja/Nyamongo)" in locations
+    assert "Wanging'ombe (Igwachanya)" in locations
+    assert "(Kewanja/Nyamongo)" not in locations
+    assert "(Igwachanya)" not in locations
 
 
 def test_fetch_and_parse_rejects_unknown_extension() -> None:
