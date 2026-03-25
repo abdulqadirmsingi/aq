@@ -59,3 +59,57 @@ def test_ingest_skips_known_url_when_store_says_so() -> None:
     assert outcomes[0].skipped is True
     assert outcomes[0].error == "skipped_known_url"
     scraper._http.assert_not_called()
+
+
+def test_ingest_skips_out_of_window_payload() -> None:
+    scraper = MagicMock()
+    scraper._settings = SimpleNamespace(
+        ewura_skip_successful_urls=False,
+        ewura_run_pdf_limit=None,
+        ewura_min_year=2025,
+        ewura_max_year=2026,
+    )
+    scraper._max_document_bytes = lambda: 10_000_000
+    scraper.list_cap_price_documents.return_value = [
+        FilteredDocumentRef(
+            url="https://www.ewura.go.tz/uploads/documents/a.pdf",
+            link_text="Cap Prices",
+        ),
+    ]
+    scraper._should_skip_for_date_window = EwuraFuelScraper._should_skip_for_date_window.__get__(
+        scraper,
+        EwuraFuelScraper,
+    )
+
+    from src.domains.energy.ewura.models import EwuraDocumentPayload
+
+    payload = EwuraDocumentPayload(
+        document_url="https://www.ewura.go.tz/uploads/documents/a.pdf",
+        published_date="2024-12-01",
+        data=[],
+        content_sha256="c" * 64,
+    )
+
+    import src.domains.energy.fuel_scraper as fuel_scraper_module
+
+    original_download = fuel_scraper_module.download_cap_price_bulletin
+    original_parse = fuel_scraper_module.parse_cap_price_bulletin_bytes
+    fuel_scraper_module.download_cap_price_bulletin = MagicMock(
+        return_value=(b"pdf", "c" * 64, ".pdf")
+    )
+    fuel_scraper_module.parse_cap_price_bulletin_bytes = MagicMock(
+        return_value=EwuraParseOutcome(
+            ok=False,
+            document_url="https://www.ewura.go.tz/uploads/documents/a.pdf",
+            payload=payload,
+        )
+    )
+    try:
+        outcomes = EwuraFuelScraper.ingest_cap_price_documents(scraper)
+    finally:
+        fuel_scraper_module.download_cap_price_bulletin = original_download
+        fuel_scraper_module.parse_cap_price_bulletin_bytes = original_parse
+
+    assert len(outcomes) == 1
+    assert outcomes[0].skipped is True
+    assert outcomes[0].error == "outside_date_window"

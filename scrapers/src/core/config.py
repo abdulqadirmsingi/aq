@@ -1,5 +1,7 @@
 """Scraper configuration loaded from environment variables."""
 
+from datetime import datetime, timezone
+
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -47,6 +49,18 @@ class ScraperSettings(BaseSettings):
     ewura_skip_successful_urls: bool = Field(
         default=True,
         description="Skip URLs that already have parse_ok=true in fingerprints",
+    )
+    ewura_min_year: int = Field(
+        default=2025,
+        ge=2000,
+        le=2100,
+        description="Ignore EWURA documents older than this year.",
+    )
+    ewura_max_year: int = Field(
+        default_factory=lambda: datetime.now(timezone.utc).year,
+        ge=2000,
+        le=2100,
+        description="Ignore EWURA documents newer than this year.",
     )
     celery_broker_url: str = Field(
         default="redis://localhost:6379/0",

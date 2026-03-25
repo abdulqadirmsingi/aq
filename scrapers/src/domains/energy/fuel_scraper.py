@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 
 from src.core.base_scraper import BaseScraper
 from src.core.config import load_settings
@@ -15,7 +16,7 @@ from src.domains.energy.ewura.document_pipeline import (
 from src.domains.energy.ewura.fetch import fetch_page
 from src.domains.energy.ewura.listing import list_cap_price_documents_from_html
 from src.domains.energy.ewura.models import EwuraParseOutcome, FilteredDocumentRef
-from src.domains.energy.ewura.persist_observations import persist_ewura_payload
+from src.domains.energy.ewura.persistence import EwuraPersistenceStore, infer_run_status
 from src.domains.energy.ewura.structured_log import ewura_info
 
 logger = logging.getLogger(__name__)
@@ -62,8 +63,12 @@ class EwuraFuelScraper(BaseScraper):
         *,
         limit: int | None = None,
         fingerprint_store: DocumentFingerprintStore | None = None,
+        persistence_store: EwuraPersistenceStore | None = None,
+        scraper_run_id=None,
+        source_id=None,
     ) -> list[EwuraParseOutcome]:
         """Parse listed PDF/DOCX bulletins; optional DB-backed dedupe."""
+        self._last_inserted_count = 0
         refs = self.list_cap_price_documents()
         doc_refs = [
             r
@@ -125,6 +130,24 @@ class EwuraFuelScraper(BaseScraper):
                 continue
 
             outcome = parse_cap_price_bulletin_bytes(raw, ext, ref, sha)
+            if self._should_skip_for_date_window(outcome):
+                if fingerprint_store and outcome.payload is not None:
+                    fingerprint_store.upsert(
+                        document_url=url,
+                        content_sha256=outcome.payload.content_sha256,
+                        parse_ok=True,
+                        records_extracted=0,
+                    )
+                outcomes.append(
+                    EwuraParseOutcome(
+                        ok=False,
+                        skipped=True,
+                        document_url=url,
+                        payload=outcome.payload,
+                        error="outside_date_window",
+                    ),
+                )
+                continue
             if fingerprint_store and outcome.payload is not None:
                 fingerprint_store.upsert(
                     document_url=url,
@@ -136,11 +159,13 @@ class EwuraFuelScraper(BaseScraper):
                 outcome.ok
                 and outcome.payload
                 and outcome.payload.data
-                and self._settings.database_url
+                and persistence_store is not None
+                and source_id is not None
             ):
-                persist_ewura_payload(
-                    self._settings.database_url,
+                self._last_inserted_count += persistence_store.persist_payload(
                     outcome.payload,
+                    scraper_run_id=scraper_run_id,
+                    source_id=source_id,
                 )
             outcomes.append(outcome)
         return outcomes
@@ -148,17 +173,57 @@ class EwuraFuelScraper(BaseScraper):
     def run(self) -> None:
         store: DocumentFingerprintStore | None = None
         own_store = False
+        persistence_store: EwuraPersistenceStore | None = None
+        run_id = None
+        source_id = None
         if self._settings.database_url:
             store = DocumentFingerprintStore(
                 self._settings.database_url,
                 self.name,
             )
             own_store = True
+            persistence_store = EwuraPersistenceStore(self._settings.database_url)
+            run_id, source_id = persistence_store.start_run(trigger_type="scheduled")
         try:
-            outcomes = self.ingest_cap_price_documents(fingerprint_store=store)
+            outcomes = self.ingest_cap_price_documents(
+                fingerprint_store=store,
+                persistence_store=persistence_store,
+                scraper_run_id=run_id,
+                source_id=source_id,
+            )
+            if persistence_store is not None and run_id is not None:
+                persistence_store.finish_run(
+                    run_id,
+                    status=infer_run_status(outcomes),
+                    records_read=sum(
+                        len(o.payload.data)
+                        for o in outcomes
+                        if o.payload is not None
+                    ),
+                    records_inserted=self._last_inserted_count,
+                    records_rejected=sum(1 for o in outcomes if not o.ok and not o.skipped),
+                    run_metadata={
+                        "documents_attempted": len(outcomes),
+                        "documents_ok": sum(1 for o in outcomes if o.ok),
+                        "documents_skipped": sum(1 for o in outcomes if o.skipped),
+                    },
+                )
+        except Exception as exc:
+            if persistence_store is not None and run_id is not None:
+                persistence_store.finish_run(
+                    run_id,
+                    status="failed",
+                    records_read=0,
+                    records_inserted=0,
+                    records_rejected=0,
+                    error_message=str(exc),
+                )
+            raise
         finally:
             if own_store and store is not None:
                 store.close()
+            if persistence_store is not None:
+                persistence_store.close()
 
         ok_n = sum(1 for o in outcomes if o.ok)
         skipped_n = sum(1 for o in outcomes if o.skipped)
@@ -176,3 +241,12 @@ class EwuraFuelScraper(BaseScraper):
     def close(self) -> None:
         if self._should_close_client:
             self._http.close()
+
+    def _should_skip_for_date_window(self, outcome: EwuraParseOutcome) -> bool:
+        if outcome.payload is None or outcome.payload.published_date is None:
+            return False
+        published = date.fromisoformat(outcome.payload.published_date)
+        return (
+            published.year < self._settings.ewura_min_year
+            or published.year > self._settings.ewura_max_year
+        )

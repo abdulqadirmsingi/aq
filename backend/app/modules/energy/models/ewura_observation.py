@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,18 @@ class EwuraFuelObservation(Base):
         String(32),
         nullable=False,
         default="EWURA",
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="SET NULL"),
+    )
+    location_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+    )
+    scraper_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("scraper_runs.id", ondelete="SET NULL"),
     )
     document_url: Mapped[str] = mapped_column(Text(), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

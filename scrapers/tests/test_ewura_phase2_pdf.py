@@ -43,6 +43,16 @@ def test_header_detector_finds_fuels() -> None:
     assert cmap.location_col == 0
 
 
+def test_header_detector_prefers_town_over_serial_column() -> None:
+    table = [
+        ["S/N", "Town", "Petrol", "Diesel", "Kerosene"],
+        ["1", "Dar es Salaam", "100", "200", "300"],
+    ]
+    cmap = HeaderDetector.detect(table)
+    assert cmap is not None
+    assert cmap.location_col == 1
+
+
 def _sample_cap_price_pdf_bytes() -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4)

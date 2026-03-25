@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -39,6 +40,7 @@ class EwuraDocumentPayload(BaseModel):
     """Structured extraction result for one EWURA bulletin."""
 
     source: Literal["EWURA"] = "EWURA"
+    source_id: UUID | None = None
     document_url: str
     published_date: str | None = Field(
         default=None,

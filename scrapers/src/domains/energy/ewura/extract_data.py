@@ -106,14 +106,14 @@ def _rows_from_table(
         if _row_blank(row):
             continue
         loc_cell = _cell_at(row, cmap.location_col)
-        loc = str(loc_cell).strip() if loc_cell else ""
+        loc = _normalize_location(loc_cell)
         if loc:
             last_location = loc
         elif last_location:
             loc = last_location
         else:
             continue
-        if _looks_like_header_again(loc):
+        if _looks_like_header_again(loc) or _looks_like_bad_location(loc):
             continue
         for fuel_type, col in fuel_specs:
             price = parse_price_cell(_cell_at(row, col))
@@ -160,3 +160,18 @@ def _looks_like_header_again(location: str) -> bool:
         "mkoa",
     }
     return loc_norm in header_tokens
+
+
+def _normalize_location(cell: str | None) -> str:
+    if cell is None:
+        return ""
+    return " ".join(str(cell).strip().split())
+
+
+def _looks_like_bad_location(location: str) -> bool:
+    loc_norm = location.lower().strip()
+    if len(loc_norm) < 2:
+        return True
+    if parse_price_cell(location) is not None:
+        return True
+    return not any(ch.isalpha() for ch in loc_norm)

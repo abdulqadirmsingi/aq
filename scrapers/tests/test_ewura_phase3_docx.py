@@ -87,3 +87,18 @@ def test_dedupe_fuel_records() -> None:
     ]
     out = dedupe_fuel_records(rows)
     assert len(out) == 2
+
+
+def test_tables_to_fuel_records_skips_numeric_location_cells() -> None:
+    tables = [
+        [
+            ["S/N", "Town", "Petrol", "Diesel"],
+            ["1", "Dodoma", "100", "200"],
+            ["2", "Morogoro", "110", "210"],
+        ],
+    ]
+    recs, _warnings = tables_to_fuel_records(
+        tables,
+        effective_date=date(2025, 1, 1),
+    )
+    assert {r.location for r in recs} == {"Dodoma", "Morogoro"}
