@@ -43,6 +43,7 @@ export const API_ENDPOINTS = {
   },
   money: {
     exchangeRates: {
+      dashboardSummary: "/money/exchange-rates/dashboard-summary",
       botFilters: "/money/exchange-rates/bot/filters",
       botHistory: "/money/exchange-rates/bot/history",
       latestComparison: "/money/exchange-rates/latest-comparison",

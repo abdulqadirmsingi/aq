@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/ui/page-header";
 import type { MoneyPageData } from "./types";
 import { getTranslations } from "next-intl/server";
 import { BotHistoryTable, ComparisonTable, GapTable, OpportunityTable, RecommendationPanel, SpreadTable, StalenessTable } from "./components/money-sections";
@@ -14,12 +13,7 @@ export async function MoneyFeature({ data }: MoneyFeatureProps) {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title={t("money.title")}
-        subtitle={t("money.liveSubtitle", {
-          instrument: data.query.instrumentCode,
-        })}
-      />
+      
 
       <MoneySummaryCards data={data} />
 

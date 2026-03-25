@@ -39,6 +39,7 @@ export type {
   ExchangeRateSpreadSummaryRead,
   ExchangeRateStalenessRead,
   ExchangeRateStalenessSummaryRead,
+  MoneyDashboardSummaryRead,
 } from "./api/money";
 
 export interface ExchangeRate {

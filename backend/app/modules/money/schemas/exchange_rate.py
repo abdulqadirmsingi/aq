@@ -206,3 +206,15 @@ class ExchangeRateOpportunitySummaryRead(BaseModel):
     cash_note_band: str | None = None
     best_source_slug: str | None
     opportunities: list[ExchangeRateOpportunityRead]
+
+
+class MoneyDashboardSummaryRead(BaseModel):
+    instrument_code: str
+    buy_best_source_name: str | None
+    buy_best_rate: Decimal | None
+    sell_best_source_name: str | None
+    sell_best_rate: Decimal | None
+    bot_mean_rate: Decimal | None
+    freshest_source_name: str | None
+    freshest_timestamp: datetime | None
+    comparison_sources_count: int

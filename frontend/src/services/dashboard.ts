@@ -2,6 +2,7 @@ import { computeChangePercent, computeTrend, formatNumber } from "@/lib/utils";
 import type { DomainSummary } from "@/types";
 import { simulateFetch } from "./api-client";
 import { getEnergyDashboardSummary } from "./energy";
+import { getMoneyDashboardSummary } from "./money";
 
 function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashboardSummary>>) {
   const summaryItems = summary.latest_summary?.items ?? [];
@@ -22,6 +23,7 @@ function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashb
 
 function buildSummaries(
   fuelSummary: Awaited<ReturnType<typeof getEnergyDashboardSummary>> | null,
+  moneySummary: Awaited<ReturnType<typeof getMoneyDashboardSummary>> | null,
 ): DomainSummary[] {
   const { currentAverage, previousAverage } = fuelSummary
     ? getFuelSummaryMetrics(fuelSummary)
@@ -34,19 +36,44 @@ function buildSummaries(
       change: computeChangePercent(currentAverage, previousAverage),
       trend: computeTrend(currentAverage, previousAverage),
     },
-    // Exchange rates disabled for now as requested
-    /*
     {
       label: "dashboard.exchangeRate",
-      value: usd ? `${formatNumber(usd.buyRate)} TZS` : "N/A",
-      change: usd ? computeChangePercent(usd.buyRate, usd.previousBuyRate) : 0,
-      trend: usd ? computeTrend(usd.buyRate, usd.previousBuyRate) : "stable",
+      value:
+        moneySummary?.bot_mean_rate !== null && moneySummary?.bot_mean_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.bot_mean_rate))} TZS`
+          : "N/A",
+      subtitle: moneySummary?.instrument_code ? `BOT ${moneySummary.instrument_code}/TZS` : undefined,
     },
-    */
+    {
+      label: "money.bestPlaceToBuy",
+      value: moneySummary?.buy_best_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.buy_best_rate !== null && moneySummary?.buy_best_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.buy_best_rate))} TZS`
+          : undefined,
+    },
+    {
+      label: "money.bestPlaceToSell",
+      value: moneySummary?.sell_best_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.sell_best_rate !== null && moneySummary?.sell_best_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.sell_best_rate))} TZS`
+          : undefined,
+    },
+    {
+      label: "money.freshestSource",
+      value: moneySummary?.freshest_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.comparison_sources_count !== null
+          && moneySummary?.comparison_sources_count !== undefined
+          ? `${moneySummary.comparison_sources_count} sources`
+          : undefined,
+    },
   ];
 }
 
 export async function getDashboardSummaries(): Promise<DomainSummary[]> {
   const fuelSummary = await getEnergyDashboardSummary().catch(() => null);
-  return simulateFetch(buildSummaries(fuelSummary));
+  const moneySummary = await getMoneyDashboardSummary().catch(() => null);
+  return simulateFetch(buildSummaries(fuelSummary, moneySummary));
 }

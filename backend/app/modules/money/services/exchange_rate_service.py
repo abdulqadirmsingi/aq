@@ -27,6 +27,7 @@ from app.modules.money.schemas.exchange_rate import (
     ExchangeRateSpreadSummaryRead,
     ExchangeRateStalenessRead,
     ExchangeRateStalenessSummaryRead,
+    MoneyDashboardSummaryRead,
 )
 
 
@@ -477,6 +478,57 @@ class ExchangeRateService:
             cash_note_band=cash_note_band,
             best_source_slug=best_option.source_slug,
             opportunities=opportunities,
+        )
+
+    async def get_dashboard_summary(
+        self,
+        *,
+        instrument_code: str,
+    ) -> MoneyDashboardSummaryRead:
+        comparison = await self.get_latest_comparison(instrument_code=instrument_code)
+        best_rates = await self.get_best_rate_summary(instrument_code=instrument_code)
+        staleness = await self.get_staleness_summary(instrument_code=instrument_code)
+
+        benchmark = next(
+            (
+                item
+                for item in comparison.items
+                if item.source_slug == "bot_exchange_rates"
+            ),
+            None,
+        )
+        freshest = next((item for item in staleness.items if item.is_freshest), None)
+
+        return MoneyDashboardSummaryRead(
+            instrument_code=instrument_code.upper(),
+            buy_best_source_name=(
+                best_rates.buy_forex.best_option.source_name
+                if best_rates.buy_forex.best_option is not None
+                else None
+            ),
+            buy_best_rate=(
+                best_rates.buy_forex.best_option.relevant_rate
+                if best_rates.buy_forex.best_option is not None
+                else None
+            ),
+            sell_best_source_name=(
+                best_rates.sell_forex.best_option.source_name
+                if best_rates.sell_forex.best_option is not None
+                else None
+            ),
+            sell_best_rate=(
+                best_rates.sell_forex.best_option.relevant_rate
+                if best_rates.sell_forex.best_option is not None
+                else None
+            ),
+            bot_mean_rate=benchmark.mean_rate if benchmark is not None else None,
+            freshest_source_name=(
+                freshest.source_name if freshest is not None else None
+            ),
+            freshest_timestamp=(
+                freshest.data_timestamp if freshest is not None else None
+            ),
+            comparison_sources_count=len(comparison.items),
         )
 
     def _to_read(self, snapshot_date: date, row) -> BotExchangeRateRead:

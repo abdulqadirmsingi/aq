@@ -200,4 +200,16 @@ export interface ExchangeRateOpportunitySummaryRead {
   opportunities: ExchangeRateOpportunityRead[];
 }
 
+export interface MoneyDashboardSummaryRead {
+  instrument_code: string;
+  buy_best_source_name: string | null;
+  buy_best_rate: number | null;
+  sell_best_source_name: string | null;
+  sell_best_rate: number | null;
+  bot_mean_rate: number | null;
+  freshest_source_name: string | null;
+  freshest_timestamp: string | null;
+  comparison_sources_count: number;
+}
+
 export type BotExchangeRatePage = ApiPage<BotExchangeRateRead>;

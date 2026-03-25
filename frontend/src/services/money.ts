@@ -9,6 +9,7 @@ import type {
   ExchangeRateRecommendationRead,
   ExchangeRateSpreadSummaryRead,
   ExchangeRateStalenessSummaryRead,
+  MoneyDashboardSummaryRead,
 } from "@/types/api";
 import type { MoneyPageData, MoneyQueryState } from "@/features/money/types";
 import { apiFetch } from "./api-client";
@@ -149,6 +150,19 @@ async function safeRequest<T>(loader: () => Promise<T>, fallback: T): Promise<T>
 
 export async function getMoneyBotFilters(): Promise<BotExchangeRateFiltersRead> {
   return apiFetch<BotExchangeRateFiltersRead>(API_ENDPOINTS.money.exchangeRates.botFilters);
+}
+
+export async function getMoneyDashboardSummary(
+  instrumentCode = MONEY_DEFAULTS.defaultInstrumentCode,
+): Promise<MoneyDashboardSummaryRead> {
+  return apiFetch<MoneyDashboardSummaryRead>(
+    API_ENDPOINTS.money.exchangeRates.dashboardSummary,
+    {
+      query: {
+        instrument_code: instrumentCode,
+      },
+    },
+  );
 }
 
 export async function getMoneyBotHistory(

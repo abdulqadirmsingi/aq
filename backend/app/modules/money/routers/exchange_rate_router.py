@@ -22,6 +22,7 @@ from app.modules.money.schemas.exchange_rate import (
     ExchangeRateRecommendationRead,
     ExchangeRateSpreadSummaryRead,
     ExchangeRateStalenessSummaryRead,
+    MoneyDashboardSummaryRead,
 )
 from app.modules.money.services.exchange_rate_service import ExchangeRateService
 
@@ -106,6 +107,19 @@ async def get_exchange_rate_recommendation(
         channel=channel,
         cash_note_band=cash_note_band,
         include_bot_as_option=include_bot_as_option,
+    )
+
+
+@router.get(
+    "/exchange-rates/dashboard-summary",
+    response_model=MoneyDashboardSummaryRead,
+)
+async def get_money_dashboard_summary(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    instrument_code: Annotated[str, Query(min_length=1, max_length=16)] = "USD",
+) -> MoneyDashboardSummaryRead:
+    return await _exchange_rate_service(db).get_dashboard_summary(
+        instrument_code=instrument_code,
     )
 
 
