@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/ui/page-header";
 import { MoneyFeature } from "@/features/money";
 import { getExchangeRates, getInflationRecords } from "@/services/money";
 import { getTranslations } from "next-intl/server";
@@ -12,7 +11,6 @@ export default async function MoneyPage() {
 
   return (
     <>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
       <MoneyFeature exchangeRates={exchangeRates} inflationRecords={inflationRecords} />
     </>
   );

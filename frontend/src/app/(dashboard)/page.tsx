@@ -8,9 +8,8 @@ export default async function DashboardPage() {
   const summaries = await getDashboardSummaries();
 
   return (
-    <>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+    <div className="space-y-10">
       <DashboardFeature summaries={summaries} />
-    </>
+    </div>
   );
 }

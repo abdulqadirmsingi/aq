@@ -1,0 +1,3 @@
+# Optional: browser automation for scrapers that need a real JS runtime.
+# pip install -r requirements.txt -r requirements-playwright.txt
+playwright>=1.49.0
