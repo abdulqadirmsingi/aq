@@ -118,7 +118,6 @@ export async function getEnergyCurrentYearTrends(
 ): Promise<EwuraFuelMonthlyTrendRead[]> {
   return apiFetch<EwuraFuelMonthlyTrendRead[]>(API_ENDPOINTS.energy.ewura.currentYearTrends, {
     query: {
-      market_segment: options.marketSegment ?? "retail",
       year: options.year,
       fuel_type: options.fuelType,
     },
@@ -130,6 +129,7 @@ export async function getEnergyHistory(
 ): Promise<EwuraFuelObservationPage> {
   return apiFetch<EwuraFuelObservationPage>(API_ENDPOINTS.energy.ewura.history, {
     query: {
+      market_segment: options.marketSegment ?? "retail",
       year: options.year,
       fuel_type: options.fuelType,
       location_query: options.locationQuery,

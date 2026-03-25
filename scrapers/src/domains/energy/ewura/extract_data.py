@@ -27,10 +27,7 @@ def tables_to_fuel_records(
     warnings: list[str] = []
     last_cmap: ColumnMap | None = None
     last_cmap_by_market: dict[FuelMarketSegment, ColumnMap] = {}
-    accepted_chunks_by_market: dict[FuelMarketSegment, list[list[FuelPriceRecord]]] = {
-        "retail": [],
-        "wholesale": [],
-    }
+    accepted_chunks: list[list[FuelPriceRecord]] = []
     for idx, table in enumerate(tables):
         cmap = HeaderDetector.detect(table)
         used_continuation = False
@@ -57,12 +54,12 @@ def tables_to_fuel_records(
             last_cmap = cmap
             last_cmap_by_market[market_segment] = cmap
         chunk, w = _rows_from_table(table, cmap, effective_date, market_segment)
-        if chunk and _is_lower_quality_duplicate_chunk(chunk, accepted_chunks_by_market[market_segment]):
+        if chunk and _is_lower_quality_duplicate_chunk(chunk, accepted_chunks):
             warnings.append(f"table_{idx}_duplicate_table")
             warnings.extend(f"table_{idx}_{m}" for m in w)
             continue
         if chunk:
-            accepted_chunks_by_market[market_segment].append(chunk)
+            accepted_chunks.append(chunk)
         records.extend(chunk)
         warnings.extend(f"table_{idx}_{m}" for m in w)
     return records, warnings
@@ -139,6 +136,8 @@ def _rows_from_table(
     for row in table[cmap.header_row_index + 1 :]:
         if _row_blank(row):
             continue
+        if market_segment == "wholesale" and not _row_has_decimal_price(row):
+            continue
         loc_cell = _cell_at(row, cmap.location_col)
         loc = _normalize_location(loc_cell)
         if loc:
@@ -205,18 +204,21 @@ def _table_market_segment(
         "premiums",
         "port charges",
         "exchange rates",
-        "port",
     )
 
     has_retail_signal = any(marker in header_text for marker in retail_markers) or any(
         marker in location_header for marker in ("town", "city", "district", "region", "location")
     )
-    has_wholesale_signal = any(marker in header_text for marker in wholesale_markers) or (
-        "port" in location_header and "town" not in location_header
+    is_port_table = "port" in location_header and "town" not in location_header
+    has_wholesale_signal = is_port_table and (
+        any(marker in header_text for marker in wholesale_markers)
+        or _table_has_decimal_prices(table)
     )
 
     if has_wholesale_signal:
         return "wholesale"
+    if is_port_table:
+        return "retail"
     if has_retail_signal:
         return "retail"
     return None
@@ -345,3 +347,14 @@ def _normalize_text(value: str | None) -> str:
     if not value:
         return ""
     return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+
+
+def _table_has_decimal_prices(table: list[list[str | None]]) -> bool:
+    for row in table:
+        if _row_has_decimal_price(row):
+            return True
+    return False
+
+
+def _row_has_decimal_price(row: list[str | None]) -> bool:
+    return any(cell and re.search(r"\d+\.\d+", cell) for cell in row)

@@ -104,11 +104,11 @@ def test_tables_to_fuel_records_skips_numeric_location_cells() -> None:
     assert {r.location for r in recs} == {"Dodoma", "Morogoro"}
 
 
-def test_tables_to_fuel_records_skips_non_retail_port_table() -> None:
+def test_tables_to_fuel_records_classifies_decimal_port_table_as_wholesale() -> None:
     tables = [
         [
             ["Port", "Petrol", None, None, "Diesel", None, None, "Kerosene"],
-            ["Dar es Salaam", "100", None, None, "200", None, None, "300"],
+            ["Dar es Salaam", None, "100.25", None, None, "200.50", None, None, "300.75"],
         ],
         [
             ["S.No", "Town", "Cap Prices", None, None],
@@ -122,8 +122,9 @@ def test_tables_to_fuel_records_skips_non_retail_port_table() -> None:
         effective_date=date(2025, 1, 1),
     )
 
-    assert {r.location for r in recs} == {"Dodoma"}
-    assert any("non_retail" in warning for warning in warnings)
+    assert {r.location for r in recs} == {"Dar es Salaam", "Dodoma"}
+    assert {r.market_segment for r in recs if r.location == "Dar es Salaam"} == {"wholesale"}
+    assert {r.market_segment for r in recs if r.location == "Dodoma"} == {"retail"}
 
 
 def test_tables_to_fuel_records_skips_lower_quality_duplicate_retail_table() -> None:
