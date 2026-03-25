@@ -14,6 +14,7 @@ from app.modules.energy.repositories.fuel_repository import FuelRepository
 from app.modules.energy.schemas.fuel import (
     EwuraFuelAvailableMonthRead,
     EwuraFuelDashboardSummaryRead,
+    EwuraFuelFiltersRead,
     EwuraFuelInsightRead,
     EwuraFuelLatestExtremesRead,
     EwuraFuelLatestPriceRead,
@@ -53,13 +54,17 @@ async def list_ewura_fuel_observations(
     )
 
 
-@router.get("/fuel/ewura/latest", response_model=list[EwuraFuelLatestPriceRead])
+@router.get("/fuel/ewura/latest", response_model=Page[EwuraFuelLatestPriceRead])
 async def get_latest_ewura_fuel_prices(
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    limit: Annotated[int, Query(ge=1, le=5000)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
     fuel_type: Annotated[str | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
-) -> list[EwuraFuelLatestPriceRead]:
-    return await _fuel_service(db).get_latest_prices(
+) -> Page[EwuraFuelLatestPriceRead]:
+    return await _fuel_service(db).list_latest_prices_page(
+        limit=limit,
+        offset=offset,
         fuel_type=fuel_type,
         location_query=location_query,
     )
@@ -109,6 +114,13 @@ async def get_ewura_available_months(
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[EwuraFuelAvailableMonthRead]:
     return await _fuel_service(db).get_available_months()
+
+
+@router.get("/fuel/ewura/filters", response_model=EwuraFuelFiltersRead)
+async def get_ewura_filters(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EwuraFuelFiltersRead:
+    return await _fuel_service(db).get_filters()
 
 
 @router.get("/fuel/ewura/dashboard-summary", response_model=EwuraFuelDashboardSummaryRead)

@@ -50,6 +50,13 @@ class EwuraFuelLatestPriceRead(BaseModel):
     document_url: str
 
 
+class EwuraFuelFiltersRead(BaseModel):
+    fuel_types: list[str]
+    history_years: list[int]
+    latest_snapshot_date: date | None
+    latest_snapshot_month_label: str | None
+
+
 class EwuraFuelLatestSummaryItemRead(BaseModel):
     fuel_type: str
     locations_count: int

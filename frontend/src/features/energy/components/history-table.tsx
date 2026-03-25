@@ -3,12 +3,15 @@ import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { EwuraFuelObservationPage, EwuraFuelObservationRead } from "@/types/api";
 import { getTranslations } from "next-intl/server";
+import { TablePagination } from "./table-pagination";
+import type { EnergyQueryState } from "../types";
 
 interface HistoryTableProps {
   history: EwuraFuelObservationPage;
+  query: EnergyQueryState;
 }
 
-export async function HistoryTable({ history }: HistoryTableProps) {
+export async function HistoryTable({ history, query }: HistoryTableProps) {
   const t = await getTranslations();
 
   const columns = [
@@ -46,14 +49,33 @@ export async function HistoryTable({ history }: HistoryTableProps) {
     <div>
       <SectionHeader
         title={t("energy.history")}
-        description={t("energy.historyDescription", { count: history.meta.total })}
+        description={
+          query.historyYear
+            ? t("energy.historyDescription", {
+                count: history.meta.total,
+                year: query.historyYear,
+              })
+            : t("energy.historyOnDemandDescription")
+        }
       />
       <DataTable
         columns={columns}
         data={history.items}
         keyExtractor={(item) => item.id}
-        emptyMessage={t("common.noData")}
+        emptyMessage={
+          query.historyYear ? t("common.noData") : t("energy.selectHistoryYear")
+        }
       />
+      {query.historyYear ? (
+        <TablePagination
+          query={query}
+          offsetKey="historyOffset"
+          limit={history.meta.limit}
+          offset={history.meta.offset}
+          total={history.meta.total}
+          hasNext={history.meta.has_next}
+        />
+      ) : null}
     </div>
   );
 }

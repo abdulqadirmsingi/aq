@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
       currentYearTrends: "/energy/fuel/ewura/current-year",
       history: "/energy/fuel/ewura/history",
       availableMonths: "/energy/fuel/ewura/available-months",
+      filters: "/energy/fuel/ewura/filters",
       rollups: "/energy/fuel/ewura/rollups",
       latestExtremes: "/energy/fuel/ewura/latest-extremes",
       insights: "/energy/fuel/ewura/insights",

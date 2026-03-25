@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import Date, cast, func, select
 
 from app.db.models.data_point import DataPoint
 from app.db.models.reference import Location
@@ -47,6 +48,7 @@ class FuelObservationRepositoryMixin:
         fuel_type: str | None = None,
         location_query: str | None = None,
         location_id: UUID | None = None,
+        exclude_snapshot_date: date | None = None,
     ) -> int:
         raw_location = DataPoint.extra_data.op("->>")("raw_location_text")
         stmt = select(func.count(DataPoint.id)).select_from(build_base_from_clause())
@@ -54,6 +56,8 @@ class FuelObservationRepositoryMixin:
             stmt = stmt.where(func.extract("year", DataPoint.recorded_at) == year)
         if month is not None:
             stmt = stmt.where(func.extract("month", DataPoint.recorded_at) == month)
+        if exclude_snapshot_date is not None:
+            stmt = stmt.where(cast(DataPoint.recorded_at, Date) != exclude_snapshot_date)
         if fuel_type is not None:
             stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
         if location_query:
@@ -72,10 +76,17 @@ class FuelObservationRepositoryMixin:
         location_id: UUID | None = None,
         location_query: str | None = None,
         year: int | None = None,
+        exclude_snapshot_date: date | None = None,
         offset: int = 0,
         limit: int = 500,
     ) -> list[FuelObservationRecord]:
-        stmt = build_observation_select(year, None, fuel_type, location_query)
+        stmt = build_observation_select(
+            year,
+            None,
+            fuel_type,
+            location_query,
+            exclude_snapshot_date,
+        )
         if location_id is not None:
             stmt = stmt.where(DataPoint.location_id == location_id)
         rows = await self._session.execute(

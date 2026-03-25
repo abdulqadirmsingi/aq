@@ -113,6 +113,7 @@ def build_observation_select(
     month: int | None,
     fuel_type: str | None,
     location_query: str | None,
+    exclude_snapshot_date: date | None = None,
 ):
     parent_location = aliased(Location)
     raw_location = DataPoint.extra_data.op("->>")("raw_location_text")
@@ -144,6 +145,8 @@ def build_observation_select(
         stmt = stmt.where(extract("year", DataPoint.recorded_at) == year)
     if month is not None:
         stmt = stmt.where(extract("month", DataPoint.recorded_at) == month)
+    if exclude_snapshot_date is not None:
+        stmt = stmt.where(cast(DataPoint.recorded_at, Date) != exclude_snapshot_date)
     if fuel_type is not None:
         stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
     if location_query:

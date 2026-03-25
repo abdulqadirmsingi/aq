@@ -42,6 +42,13 @@ export interface EwuraFuelLatestPriceRead {
   document_url: string;
 }
 
+export interface EwuraFuelFiltersRead {
+  fuel_types: string[];
+  history_years: number[];
+  latest_snapshot_date: string | null;
+  latest_snapshot_month_label: string | null;
+}
+
 export interface EwuraFuelLatestSummaryItemRead {
   fuel_type: string;
   locations_count: number;
@@ -158,5 +165,6 @@ export interface EwuraFuelRunLogRead {
 }
 
 export type EwuraFuelObservationPage = ApiPage<EwuraFuelObservationRead>;
+export type EwuraFuelLatestPricePage = ApiPage<EwuraFuelLatestPriceRead>;
 export type EwuraFuelRunPage = ApiPage<EwuraFuelRunRead>;
 export type EwuraFuelRunLogPage = ApiPage<EwuraFuelRunLogRead>;

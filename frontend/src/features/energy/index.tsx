@@ -1,4 +1,5 @@
 import { EnergySummaryCards } from "./components/energy-summary-cards";
+import { EnergyFiltersBar } from "./components/energy-filters-bar";
 import { HistoryTable } from "./components/history-table";
 import { InsightsPanel } from "./components/insights-panel";
 import { LatestPricesTable } from "./components/latest-prices-table";
@@ -18,9 +19,10 @@ export function EnergyFeature({ data }: EnergyFeatureProps) {
         latestExtremes={data.latestExtremes}
         monthsCount={data.availableMonths.length}
       />
-      <LatestPricesTable data={data.latestPrices} />
+      <EnergyFiltersBar filters={data.filters} query={data.query} />
+      <LatestPricesTable data={data.latestPrices} query={data.query} />
       <TrendsTable data={data.currentYearTrends} />
-      <HistoryTable history={data.history} />
+      <HistoryTable history={data.history} query={data.query} />
       <RollupsTable data={data.rollups} />
       <InsightsPanel insights={data.insights} />
     </div>

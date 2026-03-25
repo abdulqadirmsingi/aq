@@ -25,29 +25,10 @@ class FuelAnalyticsRepositoryMixin:
     async def get_latest_snapshot_date(self) -> date | None:
         snapshot_date_expr = cast(DataPoint.recorded_at, Date)
         result = await self._session.execute(
-            select(
-                snapshot_date_expr.label("snapshot_date"),
-                func.count(func.distinct(DataPoint.location_id)).label("locations_count"),
-                func.count(func.distinct(Metric.slug)).label("metrics_count"),
-            )
+            select(func.max(snapshot_date_expr))
             .select_from(build_base_from_clause())
-            .group_by(snapshot_date_expr)
-            .order_by(snapshot_date_expr.desc())
         )
-        rows = result.mappings().all()
-        if not rows:
-            return None
-
-        max_locations = max(int(row["locations_count"] or 0) for row in rows)
-        threshold = max(1, int(max_locations * 0.8))
-        for row in rows:
-            if (
-                int(row["locations_count"] or 0) >= threshold
-                and int(row["metrics_count"] or 0) == len(EWURA_METRIC_SLUGS)
-            ):
-                return row["snapshot_date"]
-
-        return rows[0]["snapshot_date"]
+        return result.scalar_one_or_none()
 
     async def list_latest_prices(
         self,
@@ -55,6 +36,8 @@ class FuelAnalyticsRepositoryMixin:
         snapshot_date: date,
         fuel_type: str | None = None,
         location_query: str | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
     ) -> list[FuelLatestPriceRecord]:
         current = aliased(DataPoint)
         previous = aliased(DataPoint)
@@ -128,13 +111,43 @@ class FuelAnalyticsRepositoryMixin:
                     f"%{location_query.strip()}%"
                 )
             )
-        result = await self._session.execute(
-            stmt.order_by(
-                current_energy.fuel_grade.asc(),
-                func.coalesce(current_location.name, raw_location).asc(),
-            )
+        stmt = stmt.order_by(
+            current_energy.fuel_grade.asc(),
+            func.coalesce(current_location.name, raw_location).asc(),
         )
+        if offset is not None:
+            stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        result = await self._session.execute(stmt)
         return [FuelLatestPriceRecord(**row._mapping) for row in result]
+
+    async def count_latest_prices(
+        self,
+        *,
+        snapshot_date: date,
+        fuel_type: str | None = None,
+        location_query: str | None = None,
+    ) -> int:
+        raw_location = DataPoint.extra_data.op("->>")("raw_location_text")
+        stmt = (
+            select(func.count(DataPoint.id))
+            .select_from(build_base_from_clause())
+            .where(cast(DataPoint.recorded_at, Date) == snapshot_date)
+            .where(DataPoint.is_current.is_(True))
+            .where(Metric.slug.in_(EWURA_METRIC_SLUGS))
+            .where(EnergyDetail.energy_type == "fuel_cap_price")
+        )
+        if fuel_type is not None:
+            stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
+        if location_query:
+            stmt = stmt.where(
+                func.coalesce(Location.name, raw_location).ilike(
+                    f"%{location_query.strip()}%"
+                )
+            )
+        result = await self._session.execute(stmt)
+        return int(result.scalar_one())
 
     async def get_latest_summary(
         self,
@@ -204,3 +217,31 @@ class FuelAnalyticsRepositoryMixin:
         )
         result = await self._session.execute(stmt)
         return [FuelAvailableMonthRecord(**row._mapping) for row in result]
+
+    async def list_available_fuel_types(self) -> list[str]:
+        result = await self._session.execute(
+            select(EnergyDetail.fuel_grade)
+            .select_from(build_base_from_clause())
+            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .distinct()
+            .order_by(EnergyDetail.fuel_grade.asc())
+        )
+        return [str(value) for value in result.scalars().all() if value]
+
+    async def list_history_years(
+        self,
+        *,
+        exclude_snapshot_date: date | None,
+    ) -> list[int]:
+        stmt = (
+            select(extract("year", DataPoint.recorded_at).label("year"))
+            .select_from(build_base_from_clause())
+            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .distinct()
+        )
+        if exclude_snapshot_date is not None:
+            stmt = stmt.where(cast(DataPoint.recorded_at, Date) != exclude_snapshot_date)
+        result = await self._session.execute(
+            stmt.order_by(extract("year", DataPoint.recorded_at).desc())
+        )
+        return [int(year) for year in result.scalars().all() if year is not None]

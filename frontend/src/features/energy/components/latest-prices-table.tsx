@@ -2,14 +2,17 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TrendIndicator } from "@/components/ui/trend-indicator";
-import type { EwuraFuelLatestPriceRead } from "@/types/api";
+import type { EwuraFuelLatestPricePage, EwuraFuelLatestPriceRead } from "@/types/api";
 import { getTranslations } from "next-intl/server";
+import { TablePagination } from "./table-pagination";
+import type { EnergyQueryState } from "../types";
 
 interface LatestPricesTableProps {
-  data: EwuraFuelLatestPriceRead[];
+  data: EwuraFuelLatestPricePage;
+  query: EnergyQueryState;
 }
 
-export async function LatestPricesTable({ data }: LatestPricesTableProps) {
+export async function LatestPricesTable({ data, query }: LatestPricesTableProps) {
   const t = await getTranslations();
 
   const columns = [
@@ -59,13 +62,21 @@ export async function LatestPricesTable({ data }: LatestPricesTableProps) {
     <div>
       <SectionHeader
         title={t("energy.latestPrices")}
-        description={t("energy.latestPricesDescription")}
+        description={t("energy.latestPricesDescription", { count: data.meta.total })}
       />
       <DataTable
         columns={columns}
-        data={data}
+        data={data.items}
         keyExtractor={(item) => `${item.fuel_type}-${item.raw_location_text}-${item.snapshot_date}`}
         emptyMessage={t("common.noData")}
+      />
+      <TablePagination
+        query={query}
+        offsetKey="latestOffset"
+        limit={data.meta.limit}
+        offset={data.meta.offset}
+        total={data.meta.total}
+        hasNext={data.meta.has_next}
       />
     </div>
   );
