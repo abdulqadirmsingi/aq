@@ -43,6 +43,10 @@ def _recorded_at_timestamp(value: date) -> datetime:
     return datetime(value.year, value.month, value.day, tzinfo=UTC)
 
 
+def _external_reference(payload: EwuraDocumentPayload, fuel_type: str) -> str:
+    return f"ewura:{fuel_type}:{payload.content_sha256[:48]}"
+
+
 class EwuraPersistenceStore:
     """Persists EWURA observations into the normalized platform tables."""
 
@@ -463,7 +467,7 @@ class EwuraPersistenceStore:
                 "scraper_run_id": scraper_run_id,
                 "supersedes_id": supersedes_id,
                 "supersedes_recorded_at": supersedes_recorded_at,
-                "external_reference": payload.document_url,
+                "external_reference": _external_reference(payload, fuel_type),
                 "unit_override": "TZS/Litre",
                 "value_numeric": str(price),
                 "extra_data": json.dumps(extra_data),
