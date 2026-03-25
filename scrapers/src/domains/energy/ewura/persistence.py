@@ -258,6 +258,42 @@ class EwuraPersistenceStore:
                 },
             )
 
+    def log_event(
+        self,
+        *,
+        scraper_run_id: UUID,
+        level: str,
+        event_type: str,
+        message: str,
+        details: dict[str, object] | None = None,
+        data_point_id: UUID | None = None,
+        data_point_recorded_at: datetime | None = None,
+    ) -> None:
+        with self._engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO ingestion_logs (
+                        id, scraper_run_id, data_point_id, data_point_recorded_at,
+                        level, event_type, message, details, created_at
+                    )
+                    VALUES (
+                        gen_random_uuid(), :scraper_run_id, :data_point_id, :data_point_recorded_at,
+                        :level, :event_type, :message, CAST(:details AS jsonb), now()
+                    )
+                    """,
+                ),
+                {
+                    "scraper_run_id": scraper_run_id,
+                    "data_point_id": data_point_id,
+                    "data_point_recorded_at": data_point_recorded_at,
+                    "level": level,
+                    "event_type": event_type,
+                    "message": message,
+                    "details": json.dumps(details or {}),
+                },
+            )
+
     def persist_payload(
         self,
         payload: EwuraDocumentPayload,

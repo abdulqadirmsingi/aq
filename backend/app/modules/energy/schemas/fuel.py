@@ -18,6 +18,7 @@ class EwuraFuelObservationRead(BaseModel):
     published_date: date | None
     location_id: UUID | None
     canonical_location_name: str | None
+    canonical_region_name: str | None
     raw_location_text: str
     fuel_type: str
     price: int
@@ -35,6 +36,7 @@ class EwuraFuelLatestPriceRead(BaseModel):
     previous_snapshot_month_label: str | None
     location_id: UUID | None
     canonical_location_name: str | None
+    canonical_region_name: str | None
     raw_location_text: str
     fuel_type: str
     price: int
@@ -88,3 +90,50 @@ class EwuraFuelAvailableMonthRead(BaseModel):
     month_label: str
     observation_count: int
     locations_count: int
+
+
+class EwuraFuelRollupRead(BaseModel):
+    snapshot_date: date
+    snapshot_month_label: str
+    level: str
+    group_name: str
+    fuel_type: str
+    observations_count: int
+    avg_price: int
+    avg_price_display: str
+    min_price: int
+    min_price_display: str
+    max_price: int
+    max_price_display: str
+
+
+class EwuraFuelExtremeItemRead(BaseModel):
+    location_id: UUID | None
+    canonical_location_name: str | None
+    raw_location_text: str
+    fuel_type: str
+    price: int
+    price_display: str
+    document_url: str
+
+
+class EwuraFuelLatestExtremesRead(BaseModel):
+    snapshot_date: date
+    snapshot_month_label: str
+    fuel_type: str | None
+    cheapest: list[EwuraFuelExtremeItemRead]
+    most_expensive: list[EwuraFuelExtremeItemRead]
+
+
+class EwuraFuelInsightRead(BaseModel):
+    title: str
+    body: str
+    fuel_type: str | None = None
+
+
+class EwuraFuelDashboardSummaryRead(BaseModel):
+    latest_summary: EwuraFuelLatestSummaryRead | None
+    latest_prices_preview: list[EwuraFuelLatestPriceRead]
+    current_year_trends: list[EwuraFuelMonthlyTrendRead]
+    available_months: list[EwuraFuelAvailableMonthRead]
+    insights: list[EwuraFuelInsightRead]

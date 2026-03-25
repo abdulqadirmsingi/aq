@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Date, cast, desc, extract, func, select
+from sqlalchemy import Date, cast, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -38,6 +38,7 @@ class FuelObservationRecord:
     published_date: date | None
     location_id: UUID | None
     canonical_location_name: str | None
+    canonical_region_name: str | None
     raw_location_text: str
     fuel_type: str
     price: Decimal
@@ -52,6 +53,7 @@ class FuelLatestPriceRecord:
     previous_snapshot_date: date | None
     location_id: UUID | None
     canonical_location_name: str | None
+    canonical_region_name: str | None
     raw_location_text: str
     fuel_type: str
     price: Decimal
@@ -100,14 +102,43 @@ class FuelRepository:
         month: int | None = None,
         fuel_type: str | None = None,
         location_query: str | None = None,
+        location_id: UUID | None = None,
     ) -> list[FuelObservationRecord]:
+        stmt = self._observation_select(year, month, fuel_type, location_query)
+        if location_id is not None:
+            stmt = stmt.where(DataPoint.location_id == location_id)
         rows = await self._session.execute(
-            self._observation_select(year, month, fuel_type, location_query)
-            .order_by(DataPoint.recorded_at.desc(), DataPoint.created_at.desc())
+            stmt.order_by(DataPoint.recorded_at.desc(), DataPoint.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
         return [self._to_observation_record(row._mapping) for row in rows]
+
+    async def count_ewura_observations(
+        self,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        fuel_type: str | None = None,
+        location_query: str | None = None,
+        location_id: UUID | None = None,
+    ) -> int:
+        raw_location = DataPoint.extra_data.op("->>")("raw_location_text")
+        stmt = select(func.count(DataPoint.id)).select_from(self._base_from_clause())
+        if year is not None:
+            stmt = stmt.where(extract("year", DataPoint.recorded_at) == year)
+        if month is not None:
+            stmt = stmt.where(extract("month", DataPoint.recorded_at) == month)
+        if fuel_type is not None:
+            stmt = stmt.where(EnergyDetail.fuel_grade == fuel_type)
+        if location_query:
+            stmt = stmt.where(
+                func.coalesce(Location.name, raw_location).ilike(f"%{location_query.strip()}%")
+            )
+        if location_id is not None:
+            stmt = stmt.where(DataPoint.location_id == location_id)
+        result = await self._session.execute(stmt)
+        return int(result.scalar_one())
 
     async def get_latest_snapshot_date(self) -> date | None:
         result = await self._session.execute(
@@ -129,6 +160,7 @@ class FuelRepository:
         current_metric = aliased(Metric)
         current_energy = aliased(EnergyDetail)
         current_location = aliased(Location)
+        current_parent_location = aliased(Location)
         current_source = aliased(Source)
 
         raw_location = current.extra_data.op("->>")("raw_location_text")
@@ -165,6 +197,7 @@ class FuelRepository:
                 previous_date_sq.label("previous_snapshot_date"),
                 current.location_id.label("location_id"),
                 current_location.name.label("canonical_location_name"),
+                current_parent_location.name.label("canonical_region_name"),
                 raw_location.label("raw_location_text"),
                 current_energy.fuel_grade.label("fuel_type"),
                 current.value_numeric.label("price"),
@@ -181,6 +214,7 @@ class FuelRepository:
             )
             .join(current_source, current.source_id == current_source.id)
             .outerjoin(current_location, current.location_id == current_location.id)
+            .outerjoin(current_parent_location, current_location.parent_id == current_parent_location.id)
             .where(current.is_current.is_(True))
             .where(current_metric.slug.in_(_EWURA_METRIC_SLUGS))
             .where(current_energy.energy_type == "fuel_cap_price")
@@ -203,6 +237,7 @@ class FuelRepository:
                 previous_snapshot_date=row.previous_snapshot_date,
                 location_id=row.location_id,
                 canonical_location_name=row.canonical_location_name,
+                canonical_region_name=row.canonical_region_name,
                 raw_location_text=row.raw_location_text or "",
                 fuel_type=row.fuel_type or "",
                 price=row.price,
@@ -295,13 +330,16 @@ class FuelRepository:
         location_id: UUID | None = None,
         location_query: str | None = None,
         year: int | None = None,
+        offset: int = 0,
         limit: int = 500,
     ) -> list[FuelObservationRecord]:
         stmt = self._observation_select(year, None, fuel_type, location_query)
         if location_id is not None:
             stmt = stmt.where(DataPoint.location_id == location_id)
         rows = await self._session.execute(
-            stmt.order_by(DataPoint.recorded_at.desc(), DataPoint.created_at.desc()).limit(limit)
+            stmt.order_by(DataPoint.recorded_at.desc(), DataPoint.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         return [self._to_observation_record(row._mapping) for row in rows]
 
@@ -333,6 +371,7 @@ class FuelRepository:
         fuel_type: str | None,
         location_query: str | None,
     ):
+        parent_location = aliased(Location)
         raw_location = DataPoint.extra_data.op("->>")("raw_location_text")
         document_url = DataPoint.extra_data.op("->>")("document_url")
         published_date = cast(DataPoint.extra_data.op("->>")("published_date"), Date)
@@ -348,6 +387,7 @@ class FuelRepository:
                 published_date.label("published_date"),
                 DataPoint.location_id.label("location_id"),
                 Location.name.label("canonical_location_name"),
+                parent_location.name.label("canonical_region_name"),
                 raw_location.label("raw_location_text"),
                 EnergyDetail.fuel_grade.label("fuel_type"),
                 DataPoint.value_numeric.label("price"),
@@ -355,7 +395,7 @@ class FuelRepository:
                 cast(DataPoint.recorded_at, Date).label("recorded_at"),
                 DataPoint.created_at.label("created_at"),
             )
-            .select_from(self._base_from_clause())
+            .select_from(self._base_from_clause(parent_location=parent_location))
         )
         if year is not None:
             stmt = stmt.where(extract("year", DataPoint.recorded_at) == year)
@@ -369,8 +409,8 @@ class FuelRepository:
         return stmt
 
     @staticmethod
-    def _base_from_clause():
-        return (
+    def _base_from_clause(parent_location: Location | None = None):
+        base = (
             DataPoint.__table__
             .join(Metric.__table__, DataPoint.metric_id == Metric.id)
             .join(
@@ -381,6 +421,9 @@ class FuelRepository:
             .join(Source.__table__, DataPoint.source_id == Source.id)
             .outerjoin(Location.__table__, DataPoint.location_id == Location.id)
         )
+        if parent_location is not None:
+            base = base.outerjoin(parent_location.__table__, Location.parent_id == parent_location.__table__.c.id)
+        return base
 
     @staticmethod
     def _to_observation_record(row: Any) -> FuelObservationRecord:
@@ -394,6 +437,7 @@ class FuelRepository:
             published_date=row["published_date"],
             location_id=row["location_id"],
             canonical_location_name=row["canonical_location_name"],
+            canonical_region_name=row["canonical_region_name"],
             raw_location_text=row["raw_location_text"] or "",
             fuel_type=row["fuel_type"] or "",
             price=row["price"],

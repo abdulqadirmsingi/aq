@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
+from app.common.pagination import Page, build_page
 from app.modules.energy.repositories.fuel_repository import (
     FuelAvailableMonthRecord,
     FuelLatestPriceRecord,
@@ -17,12 +18,16 @@ from app.modules.energy.repositories.fuel_repository import (
 )
 from app.modules.energy.schemas.fuel import (
     EwuraFuelAvailableMonthRead,
-    EwuraFuelHistoryRead,
+    EwuraFuelDashboardSummaryRead,
+    EwuraFuelExtremeItemRead,
+    EwuraFuelInsightRead,
     EwuraFuelLatestPriceRead,
+    EwuraFuelLatestExtremesRead,
     EwuraFuelLatestSummaryItemRead,
     EwuraFuelLatestSummaryRead,
     EwuraFuelMonthlyTrendRead,
     EwuraFuelObservationRead,
+    EwuraFuelRollupRead,
 )
 
 
@@ -39,7 +44,8 @@ class FuelService:
         month: int | None,
         fuel_type: str | None,
         location_query: str | None,
-    ) -> list[EwuraFuelObservationRead]:
+        location_id: UUID | None = None,
+    ) -> Page[EwuraFuelObservationRead]:
         rows = await self._repository.list_ewura_observations(
             limit=limit,
             offset=offset,
@@ -47,8 +53,21 @@ class FuelService:
             month=month,
             fuel_type=fuel_type,
             location_query=location_query,
+            location_id=location_id,
         )
-        return [self._to_observation(row) for row in rows]
+        total = await self._repository.count_ewura_observations(
+            year=year,
+            month=month,
+            fuel_type=fuel_type,
+            location_query=location_query,
+            location_id=location_id,
+        )
+        return build_page(
+            [self._to_observation(row) for row in rows],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     async def get_latest_prices(
         self,
@@ -97,28 +116,149 @@ class FuelService:
         location_id: UUID | None,
         location_query: str | None,
         year: int | None,
+        offset: int,
         limit: int,
-    ) -> EwuraFuelHistoryRead:
+    ) -> Page[EwuraFuelObservationRead]:
         rows = await self._repository.get_history(
             fuel_type=fuel_type,
             location_id=location_id,
             location_query=location_query,
             year=year,
+            offset=offset,
             limit=limit,
         )
-        return EwuraFuelHistoryRead(
-            filters={
-                "fuel_type": fuel_type,
-                "location_id": str(location_id) if location_id else None,
-                "location_query": location_query,
-                "year": year,
-            },
-            observations=[self._to_observation(row) for row in rows],
+        total = await self._repository.count_ewura_observations(
+            year=year,
+            fuel_type=fuel_type,
+            location_query=location_query,
+            location_id=location_id,
+        )
+        return build_page(
+            [self._to_observation(row) for row in rows],
+            total=total,
+            limit=limit,
+            offset=offset,
         )
 
     async def get_available_months(self) -> list[EwuraFuelAvailableMonthRead]:
         rows = await self._repository.get_available_months()
         return [self._to_available_month(row) for row in rows]
+
+    async def get_rollups(
+        self,
+        *,
+        level: str,
+        fuel_type: str | None,
+    ) -> list[EwuraFuelRollupRead]:
+        latest = await self.get_latest_prices(fuel_type=fuel_type, location_query=None)
+        grouped: dict[tuple[str, str], list[EwuraFuelLatestPriceRead]] = {}
+        for item in latest:
+            group_name = self._group_name(item, level)
+            if group_name is None:
+                continue
+            grouped.setdefault((group_name, item.fuel_type), []).append(item)
+        rollups: list[EwuraFuelRollupRead] = []
+        for (group_name, current_fuel_type), items in sorted(grouped.items()):
+            prices = [item.price for item in items]
+            if not prices:
+                continue
+            snapshot_date = items[0].snapshot_date
+            avg_price = int(sum(prices) / len(prices))
+            min_price = min(prices)
+            max_price = max(prices)
+            rollups.append(
+                EwuraFuelRollupRead(
+                    snapshot_date=snapshot_date,
+                    snapshot_month_label=self._month_label(snapshot_date),
+                    level=level,
+                    group_name=group_name,
+                    fuel_type=current_fuel_type,
+                    observations_count=len(items),
+                    avg_price=avg_price,
+                    avg_price_display=self._price_display(avg_price, items[0].unit),
+                    min_price=min_price,
+                    min_price_display=self._price_display(min_price, items[0].unit),
+                    max_price=max_price,
+                    max_price_display=self._price_display(max_price, items[0].unit),
+                )
+            )
+        return rollups
+
+    async def get_latest_extremes(
+        self,
+        *,
+        fuel_type: str | None,
+        top: int,
+    ) -> EwuraFuelLatestExtremesRead | None:
+        latest = await self.get_latest_prices(fuel_type=fuel_type, location_query=None)
+        if not latest:
+            return None
+        sorted_prices = sorted(latest, key=lambda item: (item.price, item.raw_location_text))
+        return EwuraFuelLatestExtremesRead(
+            snapshot_date=latest[0].snapshot_date,
+            snapshot_month_label=latest[0].snapshot_month_label,
+            fuel_type=fuel_type,
+            cheapest=[self._to_extreme_item(item) for item in sorted_prices[:top]],
+            most_expensive=[self._to_extreme_item(item) for item in sorted_prices[-top:][::-1]],
+        )
+
+    async def get_insights(self) -> list[EwuraFuelInsightRead]:
+        latest_summary = await self.get_latest_summary()
+        latest_prices = await self.get_latest_prices(fuel_type=None, location_query=None)
+        trends = await self.get_current_year_trends(year=None, fuel_type=None)
+        if latest_summary is None or not latest_prices:
+            return []
+        insights: list[EwuraFuelInsightRead] = []
+        for item in latest_summary.items:
+            matching_prices = [price for price in latest_prices if price.fuel_type == item.fuel_type]
+            changed = [price for price in matching_prices if price.percent_change is not None]
+            if changed:
+                avg_change = round(
+                    sum(price.percent_change for price in changed if price.percent_change is not None)
+                    / len(changed),
+                    2,
+                )
+                direction = "increased" if avg_change > 0 else "decreased" if avg_change < 0 else "stayed flat"
+                insights.append(
+                    EwuraFuelInsightRead(
+                        title=f"{item.fuel_type.title()} month-over-month movement",
+                        body=(
+                            f"In {latest_summary.snapshot_month_label}, average {item.fuel_type} prices "
+                            f"{direction} by {abs(avg_change):.2f}% across {item.locations_count} locations."
+                        ),
+                        fuel_type=item.fuel_type,
+                    )
+                )
+        if trends:
+            latest_month = max(trends, key=lambda row: row.month_start)
+            latest_month_rows = [row for row in trends if row.month_start == latest_month.month_start]
+            if latest_month_rows:
+                top_fuel = max(latest_month_rows, key=lambda row: row.avg_price)
+                insights.append(
+                    EwuraFuelInsightRead(
+                        title="Highest average fuel this month",
+                        body=(
+                            f"{top_fuel.fuel_type.title()} had the highest average price in "
+                            f"{top_fuel.month_label} at {top_fuel.avg_price_display}."
+                        ),
+                        fuel_type=top_fuel.fuel_type,
+                    )
+                )
+        return insights
+
+    async def get_dashboard_summary(self) -> EwuraFuelDashboardSummaryRead:
+        latest_summary = await self.get_latest_summary()
+        latest_prices = await self.get_latest_prices(fuel_type=None, location_query=None)
+        trends = await self.get_current_year_trends(year=None, fuel_type=None)
+        available_months = await self.get_available_months()
+        insights = await self.get_insights()
+        return EwuraFuelDashboardSummaryRead(
+            latest_summary=latest_summary,
+            latest_prices_preview=latest_prices[:12],
+            current_year_trends=trends,
+            available_months=available_months,
+            insights=insights,
+        )
 
     def _to_observation(self, row: FuelObservationRecord) -> EwuraFuelObservationRead:
         price = self._to_int(row.price)
@@ -132,6 +272,7 @@ class FuelService:
             published_date=row.published_date,
             location_id=row.location_id,
             canonical_location_name=row.canonical_location_name,
+            canonical_region_name=row.canonical_region_name,
             raw_location_text=row.raw_location_text,
             fuel_type=row.fuel_type,
             price=price,
@@ -162,6 +303,7 @@ class FuelService:
             ),
             location_id=row.location_id,
             canonical_location_name=row.canonical_location_name,
+            canonical_region_name=row.canonical_region_name,
             raw_location_text=row.raw_location_text,
             fuel_type=row.fuel_type,
             price=price,
@@ -225,6 +367,25 @@ class FuelService:
             observation_count=row.observation_count,
             locations_count=row.locations_count,
         )
+
+    def _to_extreme_item(self, row: EwuraFuelLatestPriceRead) -> EwuraFuelExtremeItemRead:
+        return EwuraFuelExtremeItemRead(
+            location_id=row.location_id,
+            canonical_location_name=row.canonical_location_name,
+            raw_location_text=row.raw_location_text,
+            fuel_type=row.fuel_type,
+            price=row.price,
+            price_display=row.price_display,
+            document_url=row.document_url,
+        )
+
+    @staticmethod
+    def _group_name(item: EwuraFuelLatestPriceRead, level: str) -> str | None:
+        if level == "city":
+            return item.canonical_location_name or item.raw_location_text
+        if level == "region":
+            return item.canonical_region_name
+        return None
 
     @staticmethod
     def _to_int(value: Decimal | int | None) -> int:

@@ -8,15 +8,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.pagination import Page
 from app.db.session import get_db_session
 from app.modules.energy.repositories.fuel_repository import FuelRepository
 from app.modules.energy.schemas.fuel import (
     EwuraFuelAvailableMonthRead,
-    EwuraFuelHistoryRead,
+    EwuraFuelDashboardSummaryRead,
+    EwuraFuelInsightRead,
+    EwuraFuelLatestExtremesRead,
     EwuraFuelLatestPriceRead,
     EwuraFuelLatestSummaryRead,
     EwuraFuelMonthlyTrendRead,
     EwuraFuelObservationRead,
+    EwuraFuelRollupRead,
 )
 from app.modules.energy.services.fuel_service import FuelService
 
@@ -29,7 +33,7 @@ def _fuel_service(db: AsyncSession) -> FuelService:
 
 @router.get(
     "/fuel/ewura/observations",
-    response_model=list[EwuraFuelObservationRead],
+    response_model=Page[EwuraFuelObservationRead],
     summary="List normalized EWURA fuel observations",
 )
 async def list_ewura_fuel_observations(
@@ -40,7 +44,8 @@ async def list_ewura_fuel_observations(
     month: Annotated[int | None, Query(ge=1, le=12)] = None,
     fuel_type: Annotated[str | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
-) -> list[EwuraFuelObservationRead]:
+    location_id: Annotated[UUID | None, Query()] = None,
+) -> Page[EwuraFuelObservationRead]:
     return await _fuel_service(db).list_ewura_observations(
         limit=limit,
         offset=offset,
@@ -48,6 +53,7 @@ async def list_ewura_fuel_observations(
         month=month,
         fuel_type=fuel_type,
         location_query=location_query,
+        location_id=location_id,
     )
 
 
@@ -96,7 +102,7 @@ async def get_current_year_ewura_fuel_trends(
 
 @router.get(
     "/fuel/ewura/history",
-    response_model=EwuraFuelHistoryRead,
+    response_model=Page[EwuraFuelObservationRead],
     summary="Historical EWURA fuel observations",
 )
 async def get_ewura_fuel_history(
@@ -105,13 +111,15 @@ async def get_ewura_fuel_history(
     location_id: Annotated[UUID | None, Query()] = None,
     location_query: Annotated[str | None, Query()] = None,
     year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=5000)] = 500,
-) -> EwuraFuelHistoryRead:
+) -> Page[EwuraFuelObservationRead]:
     return await _fuel_service(db).get_history(
         fuel_type=fuel_type,
         location_id=location_id,
         location_query=location_query,
         year=year,
+        offset=offset,
         limit=limit,
     )
 
@@ -125,3 +133,51 @@ async def get_ewura_available_months(
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[EwuraFuelAvailableMonthRead]:
     return await _fuel_service(db).get_available_months()
+
+
+@router.get(
+    "/fuel/ewura/dashboard-summary",
+    response_model=EwuraFuelDashboardSummaryRead,
+    summary="Backend-ready EWURA dashboard summary payload",
+)
+async def get_ewura_dashboard_summary(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EwuraFuelDashboardSummaryRead:
+    return await _fuel_service(db).get_dashboard_summary()
+
+
+@router.get(
+    "/fuel/ewura/rollups",
+    response_model=list[EwuraFuelRollupRead],
+    summary="Latest EWURA price rollups by city or region",
+)
+async def get_ewura_rollups(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    level: Annotated[str, Query(pattern="^(city|region)$")] = "city",
+    fuel_type: Annotated[str | None, Query()] = None,
+) -> list[EwuraFuelRollupRead]:
+    return await _fuel_service(db).get_rollups(level=level, fuel_type=fuel_type)
+
+
+@router.get(
+    "/fuel/ewura/latest-extremes",
+    response_model=EwuraFuelLatestExtremesRead | None,
+    summary="Cheapest and most expensive latest EWURA prices",
+)
+async def get_ewura_latest_extremes(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    fuel_type: Annotated[str | None, Query()] = None,
+    top: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> EwuraFuelLatestExtremesRead | None:
+    return await _fuel_service(db).get_latest_extremes(fuel_type=fuel_type, top=top)
+
+
+@router.get(
+    "/fuel/ewura/insights",
+    response_model=list[EwuraFuelInsightRead],
+    summary="Month-over-month backend-generated EWURA insights",
+)
+async def get_ewura_insights(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[EwuraFuelInsightRead]:
+    return await _fuel_service(db).get_insights()
