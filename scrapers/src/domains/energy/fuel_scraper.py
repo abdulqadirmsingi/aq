@@ -206,6 +206,9 @@ class EwuraFuelScraper(BaseScraper):
                         "documents_attempted": len(outcomes),
                         "documents_ok": sum(1 for o in outcomes if o.ok),
                         "documents_skipped": sum(1 for o in outcomes if o.skipped),
+                        "documents_failed": sum(
+                            1 for o in outcomes if not o.ok and not o.skipped
+                        ),
                     },
                 )
         except Exception as exc:
@@ -237,6 +240,7 @@ class EwuraFuelScraper(BaseScraper):
             documents_ok=ok_n,
             documents_skipped=skipped_n,
         )
+        return outcomes
 
     def close(self) -> None:
         if self._should_close_client:

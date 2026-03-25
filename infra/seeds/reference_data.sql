@@ -193,11 +193,9 @@ WITH tz_country AS (
     country_code = EXCLUDED.country_code,
     is_active = EXCLUDED.is_active,
     updated_at = now()
-  RETURNING id
+  RETURNING 1
 ),
 country_row AS (
-  SELECT id FROM tz_country
-  UNION ALL
   SELECT id FROM locations WHERE path = 'TZ'
 ),
 region_seed AS (

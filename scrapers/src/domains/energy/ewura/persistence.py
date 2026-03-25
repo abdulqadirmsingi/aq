@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from collections.abc import Iterable
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 
 from src.core.db_url import sync_database_url
 from src.domains.energy.ewura.models import EwuraDocumentPayload
@@ -16,14 +19,32 @@ from src.domains.energy.ewura.models import EwuraDocumentPayload
 _EWURA_SOURCE_SLUG = "ewura"
 _ENERGY_CATEGORY_SLUG = "energy"
 _TZ_COUNTRY_PATH = "TZ"
+_FUEL_METRICS: dict[str, tuple[str, str]] = {
+    "petrol": (
+        "ewura_petrol_cap_price",
+        "Monthly EWURA retail cap price for petrol.",
+    ),
+    "diesel": (
+        "ewura_diesel_cap_price",
+        "Monthly EWURA retail cap price for diesel.",
+    ),
+    "kerosene": (
+        "ewura_kerosene_cap_price",
+        "Monthly EWURA retail cap price for kerosene.",
+    ),
+}
 
 
 def _slugify(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "unknown"
 
 
+def _recorded_at_timestamp(value: date) -> datetime:
+    return datetime(value.year, value.month, value.day, tzinfo=UTC)
+
+
 class EwuraPersistenceStore:
-    """Persists EWURA observations while keeping reference tables in sync."""
+    """Persists EWURA observations into the normalized platform tables."""
 
     def __init__(self, database_url: str) -> None:
         self._engine: Engine = create_engine(
@@ -36,76 +57,141 @@ class EwuraPersistenceStore:
 
     def ensure_reference_ids(self) -> tuple[UUID, UUID, UUID]:
         with self._engine.begin() as conn:
-            category_id = conn.execute(
-                text(
-                    """
-                    INSERT INTO data_categories (id, slug, name, description, created_at, updated_at)
-                    VALUES (gen_random_uuid(), :slug, :name, :description, now(), now())
-                    ON CONFLICT (slug) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        description = EXCLUDED.description,
-                        updated_at = now()
-                    RETURNING id
-                    """,
-                ),
-                {
-                    "slug": _ENERGY_CATEGORY_SLUG,
-                    "name": "Energy",
-                    "description": "Energy market and tariff observations.",
-                },
-            ).scalar_one()
-            source_id = conn.execute(
-                text(
-                    """
-                    INSERT INTO sources (
-                        id, slug, name, source_type, description, url,
-                        reliability_score, metadata, created_at, updated_at
-                    )
-                    VALUES (
-                        gen_random_uuid(), :slug, :name, 'government', :description, :url,
-                        0.950, '{}'::jsonb, now(), now()
-                    )
-                    ON CONFLICT (slug) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        description = EXCLUDED.description,
-                        url = EXCLUDED.url,
-                        updated_at = now()
-                    RETURNING id
-                    """,
-                ),
-                {
-                    "slug": _EWURA_SOURCE_SLUG,
-                    "name": "EWURA",
-                    "description": "Energy and Water Utilities Regulatory Authority petroleum cap prices.",
-                    "url": "https://www.ewura.go.tz/pages/petroleum-product-pricing",
-                },
-            ).scalar_one()
-            country_id = conn.execute(
-                text(
-                    """
-                    INSERT INTO locations (
-                        id, name, code, level, parent_id, country_code, path,
-                        is_active, created_at, updated_at
-                    )
-                    VALUES (
-                        gen_random_uuid(), 'Tanzania', 'TZ', 'country', NULL, 'TZA', :path,
-                        true, now(), now()
-                    )
-                    ON CONFLICT (path) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        code = EXCLUDED.code,
-                        country_code = EXCLUDED.country_code,
-                        updated_at = now()
-                    RETURNING id
-                    """,
-                ),
-                {"path": _TZ_COUNTRY_PATH},
-            ).scalar_one()
+            return self._ensure_reference_ids(conn)
+
+    def _ensure_reference_ids(self, conn: Connection) -> tuple[UUID, UUID, UUID]:
+        category_id = conn.execute(
+            text(
+                """
+                INSERT INTO data_categories (id, slug, name, description, created_at, updated_at)
+                VALUES (gen_random_uuid(), :slug, :name, :description, now(), now())
+                ON CONFLICT (slug) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    description = EXCLUDED.description,
+                    updated_at = now()
+                RETURNING id
+                """,
+            ),
+            {
+                "slug": _ENERGY_CATEGORY_SLUG,
+                "name": "Energy",
+                "description": "Energy market and tariff observations.",
+            },
+        ).scalar_one()
+        source_id = conn.execute(
+            text(
+                """
+                INSERT INTO sources (
+                    id, slug, name, source_type, description, url,
+                    reliability_score, metadata, created_at, updated_at
+                )
+                VALUES (
+                    gen_random_uuid(), :slug, :name, 'government', :description, :url,
+                    0.950, '{}'::jsonb, now(), now()
+                )
+                ON CONFLICT (slug) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    description = EXCLUDED.description,
+                    url = EXCLUDED.url,
+                    updated_at = now()
+                RETURNING id
+                """,
+            ),
+            {
+                "slug": _EWURA_SOURCE_SLUG,
+                "name": "EWURA",
+                "description": "Energy and Water Utilities Regulatory Authority petroleum cap prices.",
+                "url": "https://www.ewura.go.tz/pages/petroleum-product-pricing",
+            },
+        ).scalar_one()
+        country_id = conn.execute(
+            text(
+                """
+                INSERT INTO locations (
+                    id, name, code, level, parent_id, country_code, path,
+                    is_active, created_at, updated_at
+                )
+                VALUES (
+                    gen_random_uuid(), 'Tanzania', 'TZ', 'country', NULL, 'TZA', :path,
+                    true, now(), now()
+                )
+                ON CONFLICT (path) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    code = EXCLUDED.code,
+                    country_code = EXCLUDED.country_code,
+                    updated_at = now()
+                RETURNING id
+                """,
+            ),
+            {"path": _TZ_COUNTRY_PATH},
+        ).scalar_one()
         return category_id, source_id, country_id
 
-    def start_run(self, *, trigger_type: str) -> tuple[UUID, UUID]:
-        category_id, source_id, _country_id = self.ensure_reference_ids()
+    def ensure_metric_ids(self) -> dict[str, UUID]:
         with self._engine.begin() as conn:
+            category_id, source_id, _country_id = self._ensure_reference_ids(conn)
+            return self._ensure_metric_ids(conn, category_id, source_id)
+
+    def _ensure_metric_ids(
+        self,
+        conn: Connection,
+        category_id: UUID,
+        source_id: UUID,
+    ) -> dict[str, UUID]:
+        metric_ids: dict[str, UUID] = {}
+        for fuel_type, (slug, description) in _FUEL_METRICS.items():
+            metric_id = conn.execute(
+                text(
+                    """
+                    INSERT INTO metrics (
+                        id, slug, name, unit, description, category_id,
+                        canonical_source_id, value_type, default_frequency,
+                        is_location_required, validation_rules, dimensions_schema,
+                        created_at, updated_at
+                    )
+                    VALUES (
+                        gen_random_uuid(), :slug, :name, 'TZS/Litre', :description, :category_id,
+                        :source_id, 'numeric', 'monthly',
+                        true, CAST(:validation_rules AS jsonb),
+                        CAST(:dimensions_schema AS jsonb),
+                        now(), now()
+                    )
+                    ON CONFLICT (slug) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        unit = EXCLUDED.unit,
+                        description = EXCLUDED.description,
+                        category_id = EXCLUDED.category_id,
+                        canonical_source_id = EXCLUDED.canonical_source_id,
+                        value_type = EXCLUDED.value_type,
+                        default_frequency = EXCLUDED.default_frequency,
+                        is_location_required = EXCLUDED.is_location_required,
+                        validation_rules = EXCLUDED.validation_rules,
+                        dimensions_schema = EXCLUDED.dimensions_schema,
+                        updated_at = now()
+                    RETURNING id
+                    """,
+                ),
+                {
+                    "slug": slug,
+                    "name": f"EWURA {fuel_type.title()} Cap Price",
+                    "description": description,
+                    "category_id": category_id,
+                    "source_id": source_id,
+                    "validation_rules": json.dumps({"min": 0, "max": 100000}),
+                    "dimensions_schema": json.dumps(
+                        {
+                            "fuel_type": {"type": "string"},
+                            "document_url": {"type": "string"},
+                        }
+                    ),
+                },
+            ).scalar_one()
+            metric_ids[fuel_type] = metric_id
+        return metric_ids
+
+    def start_run(self, *, trigger_type: str) -> tuple[UUID, UUID]:
+        with self._engine.begin() as conn:
+            category_id, source_id, _country_id = self._ensure_reference_ids(conn)
             run_id = conn.execute(
                 text(
                     """
@@ -178,50 +264,71 @@ class EwuraPersistenceStore:
         if not payload.data:
             return 0
 
-        country_id = self.ensure_reference_ids()[2]
-        payload.source_id = source_id
-        published_date = payload.published_date
-        sql = text(
-            """
-            INSERT INTO ewura_fuel_observations (
-                source_id, scraper_run_id, location_id, source_label,
-                document_url, content_sha256, published_date,
-                raw_location_text, fuel_type, price, unit, recorded_at
-            ) VALUES (
-                :source_id, :scraper_run_id, :location_id, :source_label,
-                :document_url, :sha, :published_date,
-                :raw_location_text, :fuel_type, :price, :unit, :recorded_at
-            )
-            ON CONFLICT (content_sha256, raw_location_text, fuel_type, recorded_at) DO NOTHING
-            """,
-        )
         inserted = 0
         with self._engine.begin() as conn:
+            category_id, source_id, country_id = self._ensure_reference_ids(conn)
+            metric_ids = self._ensure_metric_ids(conn, category_id, source_id)
             for rec in payload.data:
-                location_id = self._ensure_location(conn, rec.location, country_id)
-                res = conn.execute(
-                    sql,
-                    {
-                        "source_id": source_id,
-                        "scraper_run_id": scraper_run_id,
-                        "location_id": location_id,
-                        "source_label": payload.source,
-                        "document_url": payload.document_url,
-                        "sha": payload.content_sha256,
-                        "published_date": published_date,
-                        "raw_location_text": rec.location,
-                        "fuel_type": rec.fuel_type,
-                        "price": rec.price,
-                        "unit": rec.unit,
-                        "recorded_at": rec.recorded_at,
-                    },
+                location_id = self._resolve_location_id(conn, rec.location, country_id)
+                inserted += self._upsert_datapoint(
+                    conn,
+                    payload=payload,
+                    metric_id=metric_ids[rec.fuel_type],
+                    location_id=location_id,
+                    fuel_type=rec.fuel_type,
+                    price=rec.price,
+                    recorded_at=_recorded_at_timestamp(rec.recorded_at),
+                    scraper_run_id=scraper_run_id,
+                    source_id=source_id,
+                    raw_location_text=rec.location,
                 )
-                if res.rowcount:
-                    inserted += res.rowcount
         return inserted
 
-    def _ensure_location(self, conn, name: str, country_id: UUID) -> UUID:
-        path = f"{_TZ_COUNTRY_PATH}/{_slugify(name)}"
+    def _resolve_location_id(
+        self,
+        conn: Connection,
+        raw_location_text: str,
+        country_id: UUID,
+    ) -> UUID:
+        existing = conn.execute(
+            text(
+                """
+                SELECT id
+                FROM locations
+                WHERE lower(name) = lower(:name)
+                  AND country_code = 'TZA'
+                ORDER BY
+                  CASE level
+                    WHEN 'city' THEN 1
+                    WHEN 'district' THEN 2
+                    WHEN 'ward' THEN 3
+                    WHEN 'other' THEN 4
+                    WHEN 'region' THEN 5
+                    ELSE 6
+                  END
+                LIMIT 1
+                """,
+            ),
+            {"name": raw_location_text},
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
+
+        path = f"{_TZ_COUNTRY_PATH}/{_slugify(raw_location_text)}"
+        existing = conn.execute(
+            text(
+                """
+                SELECT id
+                FROM locations
+                WHERE path = :path
+                LIMIT 1
+                """,
+            ),
+            {"path": path},
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
+
         return conn.execute(
             text(
                 """
@@ -240,11 +347,151 @@ class EwuraPersistenceStore:
                 """,
             ),
             {
-                "name": name,
+                "name": raw_location_text,
                 "parent_id": country_id,
                 "path": path,
             },
         ).scalar_one()
+
+    def _upsert_datapoint(
+        self,
+        conn: Connection,
+        *,
+        payload: EwuraDocumentPayload,
+        metric_id: UUID,
+        location_id: UUID,
+        fuel_type: str,
+        price: int,
+        recorded_at: datetime,
+        scraper_run_id: UUID | None,
+        source_id: UUID,
+        raw_location_text: str,
+    ) -> int:
+        existing = conn.execute(
+            text(
+                """
+                SELECT
+                    dp.id,
+                    dp.recorded_at,
+                    dp.version_no,
+                    dp.value_numeric,
+                    dp.extra_data,
+                    dp.ingestion_metadata
+                FROM data_points AS dp
+                WHERE dp.metric_id = :metric_id
+                  AND dp.source_id = :source_id
+                  AND dp.location_id = :location_id
+                  AND dp.recorded_at = :recorded_at
+                  AND dp.is_current = true
+                LIMIT 1
+                """,
+            ),
+            {
+                "metric_id": metric_id,
+                "source_id": source_id,
+                "location_id": location_id,
+                "recorded_at": recorded_at,
+            },
+        ).mappings().first()
+
+        extra_data = {
+            "document_url": payload.document_url,
+            "published_date": payload.published_date,
+            "raw_location_text": raw_location_text,
+        }
+        ingestion_metadata = {
+            "content_sha256": payload.content_sha256,
+            "source_label": payload.source,
+            "parse_warnings": payload.parse_warnings,
+        }
+
+        if existing is not None:
+            same_value = Decimal(str(price)) == existing["value_numeric"]
+            same_extra = (existing["extra_data"] or {}) == extra_data
+            same_ingestion = (existing["ingestion_metadata"] or {}) == ingestion_metadata
+            if same_value and same_extra and same_ingestion:
+                return 0
+
+            conn.execute(
+                text(
+                    """
+                    UPDATE data_points
+                    SET
+                        is_current = false
+                    WHERE id = :id
+                      AND recorded_at = :recorded_at
+                    """,
+                ),
+                {
+                    "id": existing["id"],
+                    "recorded_at": existing["recorded_at"],
+                },
+            )
+            version_no = int(existing["version_no"]) + 1
+            supersedes_id = existing["id"]
+            supersedes_recorded_at = existing["recorded_at"]
+        else:
+            version_no = 1
+            supersedes_id = None
+            supersedes_recorded_at = None
+
+        data_point_id = uuid.uuid4()
+        conn.execute(
+            text(
+                """
+                INSERT INTO data_points (
+                    id, metric_id, source_id, location_id, scraper_run_id,
+                    supersedes_id, supersedes_recorded_at, external_reference,
+                    unit_override, value_type, value_numeric, extra_data,
+                    ingestion_metadata, recorded_at, version_no, is_current,
+                    is_valid, confidence_score
+                )
+                VALUES (
+                    :id, :metric_id, :source_id, :location_id, :scraper_run_id,
+                    :supersedes_id, :supersedes_recorded_at, :external_reference,
+                    :unit_override, 'numeric', :value_numeric, CAST(:extra_data AS jsonb),
+                    CAST(:ingestion_metadata AS jsonb), :recorded_at, :version_no, true,
+                    true, 1.0000
+                )
+                """,
+            ),
+            {
+                "id": data_point_id,
+                "metric_id": metric_id,
+                "source_id": source_id,
+                "location_id": location_id,
+                "scraper_run_id": scraper_run_id,
+                "supersedes_id": supersedes_id,
+                "supersedes_recorded_at": supersedes_recorded_at,
+                "external_reference": payload.document_url,
+                "unit_override": "TZS/Litre",
+                "value_numeric": str(price),
+                "extra_data": json.dumps(extra_data),
+                "ingestion_metadata": json.dumps(ingestion_metadata),
+                "recorded_at": recorded_at,
+                "version_no": version_no,
+            },
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO energy_details (
+                    id, data_point_id, data_point_recorded_at, energy_type,
+                    fuel_grade, provider_name, created_at, updated_at
+                )
+                VALUES (
+                    gen_random_uuid(), :data_point_id, :recorded_at, 'fuel_cap_price',
+                    :fuel_grade, 'EWURA', now(), now()
+                )
+                """,
+            ),
+            {
+                "data_point_id": data_point_id,
+                "recorded_at": recorded_at,
+                "fuel_grade": fuel_type,
+            },
+        )
+        return 1
 
 
 def infer_run_status(outcomes: Iterable[object]) -> str:

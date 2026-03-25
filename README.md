@@ -46,10 +46,10 @@ uvicorn app.main:app --reload
 
 The **backend** (FastAPI) is only an HTTP API. It **does not** run the EWURA scraper inside Uvicorn.
 
-The **scrapers** package is a separate Python project under `scrapers/`. It fetches EWURA pages, downloads PDFs/DOCX in memory, parses tables, and **writes two kinds of rows in PostgreSQL**:
+The **scrapers** package is a separate Python project under `scrapers/`. It fetches EWURA pages, downloads PDFs/DOCX in memory, parses tables, and **writes normalized rows in PostgreSQL**:
 
 1. **`document_ingestion_fingerprints`** — dedupe metadata (URL + content hash + parse status).  
-2. **`ewura_fuel_observations`** — actual cap-price rows (town, fuel type, price, etc.) that the **backend reads** and exposes at:
+2. **`data_points` + `energy_details`** — normalized cap-price facts and energy metadata that the **backend reads** and exposes at:
 
    `GET /api/v1/energy/fuel/ewura`
 
@@ -118,7 +118,7 @@ finally:
 "
 ```
 
-`EwuraFuelScraper.run()` lists documents, parses PDF/DOCX, updates fingerprints, and **persists** successful parses to **`ewura_fuel_observations`**.
+`EwuraFuelScraper.run()` lists documents, parses PDF/DOCX, updates fingerprints, and **persists** successful parses to **`data_points`** plus **`energy_details`**.
 
 ### Option C — Trigger a single Celery task from the CLI
 

@@ -47,7 +47,7 @@ class ScraperSettings(BaseSettings):
         description="PostgreSQL URL for fingerprint dedupe (optional)",
     )
     ewura_skip_successful_urls: bool = Field(
-        default=True,
+        default=False,
         description="Skip URLs that already have parse_ok=true in fingerprints",
     )
     ewura_min_year: int = Field(

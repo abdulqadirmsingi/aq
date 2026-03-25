@@ -1,11 +1,20 @@
-"""Data access for fuel-related tables."""
+"""Data access for normalized EWURA fuel observations."""
 
 from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from app.modules.energy.models.ewura_observation import EwuraFuelObservation
+from app.db.models.data_point import DataPoint
+from app.db.models.reference import Metric
+from app.modules.energy.models.fuel import EnergyDetail
+
+_EWURA_METRIC_SLUGS = (
+    "ewura_petrol_cap_price",
+    "ewura_diesel_cap_price",
+    "ewura_kerosene_cap_price",
+)
 
 
 class FuelRepository:
@@ -17,10 +26,21 @@ class FuelRepository:
         *,
         limit: int,
         offset: int,
-    ) -> list[EwuraFuelObservation]:
+    ) -> list[DataPoint]:
         stmt = (
-            select(EwuraFuelObservation)
-            .order_by(EwuraFuelObservation.created_at.desc())
+            select(DataPoint)
+            .join(DataPoint.metric)
+            .join(DataPoint.energy_detail)
+            .where(Metric.slug.in_(_EWURA_METRIC_SLUGS))
+            .where(EnergyDetail.energy_type == "fuel_cap_price")
+            .where(DataPoint.is_current.is_(True))
+            .options(
+                joinedload(DataPoint.energy_detail),
+                joinedload(DataPoint.location),
+                joinedload(DataPoint.source),
+                joinedload(DataPoint.metric),
+            )
+            .order_by(DataPoint.recorded_at.desc(), DataPoint.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
