@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.modules.energy.routers.fuel_router import router as fuel_router
 
 
 def create_app() -> FastAPI:
@@ -26,6 +27,8 @@ def create_app() -> FastAPI:
     @application.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    application.include_router(fuel_router, prefix="/api/v1")
 
     return application
 

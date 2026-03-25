@@ -15,6 +15,7 @@ from src.domains.energy.ewura.document_pipeline import (
 from src.domains.energy.ewura.fetch import fetch_page
 from src.domains.energy.ewura.listing import list_cap_price_documents_from_html
 from src.domains.energy.ewura.models import EwuraParseOutcome, FilteredDocumentRef
+from src.domains.energy.ewura.persist_observations import persist_ewura_payload
 from src.domains.energy.ewura.structured_log import ewura_info
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,16 @@ class EwuraFuelScraper(BaseScraper):
                     content_sha256=outcome.payload.content_sha256,
                     parse_ok=outcome.ok,
                     records_extracted=len(outcome.payload.data),
+                )
+            if (
+                outcome.ok
+                and outcome.payload
+                and outcome.payload.data
+                and self._settings.database_url
+            ):
+                persist_ewura_payload(
+                    self._settings.database_url,
+                    outcome.payload,
                 )
             outcomes.append(outcome)
         return outcomes
