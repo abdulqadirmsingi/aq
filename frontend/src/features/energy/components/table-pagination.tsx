@@ -9,7 +9,8 @@ interface TablePaginationProps {
     | "retailLatestOffset"
     | "retailHistoryOffset"
     | "wholesaleLatestOffset"
-    | "wholesaleHistoryOffset";
+    | "wholesaleHistoryOffset"
+    | "rollupsOffset";
   limit: number;
   offset: number;
   total: number;

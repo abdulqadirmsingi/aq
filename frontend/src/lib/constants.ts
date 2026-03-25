@@ -50,5 +50,6 @@ export const ENERGY_DEFAULTS = {
   historyLimit: 12,
   runsLimit: 5,
   runLogsLimit: 8,
+  rollupsLimit: 12,
   rollupLevel: "region",
 } as const;

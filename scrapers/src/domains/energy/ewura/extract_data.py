@@ -25,7 +25,6 @@ def tables_to_fuel_records(
     """
     records: list[FuelPriceRecord] = []
     warnings: list[str] = []
-    last_cmap: ColumnMap | None = None
     last_cmap_by_market: dict[FuelMarketSegment, ColumnMap] = {}
     accepted_chunks: list[list[FuelPriceRecord]] = []
     for idx, table in enumerate(tables):
@@ -51,7 +50,6 @@ def tables_to_fuel_records(
             warnings.append(f"table_{idx}_non_retail")
             continue
         if not used_continuation:
-            last_cmap = cmap
             last_cmap_by_market[market_segment] = cmap
         chunk, w = _rows_from_table(table, cmap, effective_date, market_segment)
         if chunk and _is_lower_quality_duplicate_chunk(chunk, accepted_chunks):
@@ -84,7 +82,7 @@ def _continuation_candidate(
     need = _max_col_index(last_cmap) + 1
     if _table_width(table) < need:
         return False
-    fuel_cols = [
+    fuel_cols = sorted(
         c
         for c in (
             last_cmap.petrol_col,
@@ -92,15 +90,33 @@ def _continuation_candidate(
             last_cmap.kerosene_col,
         )
         if c is not None
-    ]
-    for row in table[:10]:
+    )
+    if not fuel_cols:
+        return False
+
+    first_fuel_col = fuel_cols[0]
+    data_like_rows = 0
+    for row in table[:12]:
+        if _row_blank(row):
+            continue
+        if _row_has_alpha_text_in_price_window(row, first_fuel_col, fuel_cols[-1] + 2):
+            continue
         parsed_prices = [
-            parse_price_cell(_cell_at(row, c))
-            for c in fuel_cols
-            if parse_price_cell(_cell_at(row, c)) is not None
+            price
+            for idx, col in enumerate(fuel_cols)
+            if (
+                price := _price_from_row(
+                    row,
+                    col,
+                    _next_fuel_boundary(fuel_cols, idx, len(row)),
+                )
+            )
+            is not None
         ]
-        if len(parsed_prices) >= 2:
-            return True
+        if len(parsed_prices) >= 2 and _prices_look_plausible(parsed_prices):
+            data_like_rows += 1
+            if data_like_rows >= 2:
+                return True
     return False
 
 
@@ -132,14 +148,18 @@ def _rows_from_table(
         fuel_specs.append(("kerosene", cmap.kerosene_col))
     if not fuel_specs:
         return [], ["no_fuel_columns"]
+    fuel_specs.sort(key=lambda item: item[1])
+    ordered_fuel_cols = sorted(col for _, col in fuel_specs)
+    first_fuel_col = ordered_fuel_cols[0]
 
     for row in table[cmap.header_row_index + 1 :]:
         if _row_blank(row):
             continue
+        if _row_has_alpha_text_in_price_window(row, first_fuel_col, ordered_fuel_cols[-1] + 2):
+            continue
         if market_segment == "wholesale" and not _row_has_decimal_price(row):
             continue
-        loc_cell = _cell_at(row, cmap.location_col)
-        loc = _normalize_location(loc_cell)
+        loc = _location_text_from_row(row, cmap, first_fuel_col)
         if loc:
             last_location = loc
         elif last_location:
@@ -149,12 +169,17 @@ def _rows_from_table(
         if _looks_like_header_again(loc) or _looks_like_bad_location(loc):
             continue
         parsed_prices: list[tuple[FuelType, int]] = []
-        for fuel_type, col in fuel_specs:
-            price = _price_from_row(row, col)
+        for idx, (fuel_type, col) in enumerate(fuel_specs):
+            price = _price_from_row(
+                row,
+                col,
+                _next_fuel_boundary(ordered_fuel_cols, idx, len(row)),
+            )
             if price is None:
                 continue
             parsed_prices.append((fuel_type, price))
-        if len(parsed_prices) < 2:
+        prices = [price for _, price in parsed_prices]
+        if len(parsed_prices) < 2 or not _prices_look_plausible(prices):
             continue
         for fuel_type, price in parsed_prices:
             out.append(
@@ -293,8 +318,8 @@ def _cell_at(row: list[str | None], col: int) -> str | None:
     return row[col]
 
 
-def _price_from_row(row: list[str | None], col: int) -> int | None:
-    for candidate_col in range(max(0, col - 1), min(len(row), col + 3)):
+def _price_from_row(row: list[str | None], col: int, upper_bound: int) -> int | None:
+    for candidate_col in range(max(0, col), min(len(row), upper_bound)):
         price = parse_price_cell(_cell_at(row, candidate_col))
         if price is not None:
             return price
@@ -331,7 +356,7 @@ def _looks_like_header_again(location: str) -> bool:
 def _normalize_location(cell: str | None) -> str:
     if cell is None:
         return ""
-    return " ".join(str(cell).strip().split())
+    return _repair_location_spacing(" ".join(str(cell).strip().split()))
 
 
 def _looks_like_bad_location(location: str) -> bool:
@@ -358,3 +383,87 @@ def _table_has_decimal_prices(table: list[list[str | None]]) -> bool:
 
 def _row_has_decimal_price(row: list[str | None]) -> bool:
     return any(cell and re.search(r"\d+\.\d+", cell) for cell in row)
+
+
+def _location_text_from_row(
+    row: list[str | None],
+    cmap: ColumnMap,
+    first_fuel_col: int,
+) -> str:
+    fragments: list[str] = []
+    prefix_limit = min(first_fuel_col, len(row))
+    for col in range(prefix_limit):
+        cell = _normalize_location(_cell_at(row, col))
+        if not cell or _is_serial_cell(cell):
+            continue
+        fragments.append(cell)
+
+    if not fragments:
+        return _normalize_location(_cell_at(row, cmap.location_col))
+    return _normalize_location(" ".join(fragments))
+
+
+def _is_serial_cell(value: str) -> bool:
+    norm = value.strip().lower()
+    return bool(re.fullmatch(r"[\d.]+", norm))
+
+
+def _repair_location_spacing(value: str) -> str:
+    tokens = re.sub(r"\s+", " ", value).strip().split(" ")
+    if not tokens:
+        return ""
+
+    connectors = {"es", "ya", "wa", "na", "de", "di", "of"}
+    merged: list[str] = []
+    idx = 0
+    while idx < len(tokens):
+        token = tokens[idx]
+        if idx + 1 < len(tokens):
+            nxt = tokens[idx + 1]
+            if (
+                token.isalpha()
+                and nxt.isalpha()
+                and (
+                    (len(token) == 1 and len(nxt) >= 3)
+                    or (
+                        len(token) >= 4
+                        and 1 <= len(nxt) <= 4
+                        and nxt.casefold() not in connectors
+                    )
+                )
+            ):
+                token = f"{token}{nxt}"
+                idx += 1
+        merged.append(token)
+        idx += 1
+
+    repaired = " ".join(merged)
+    repaired = re.sub(r"\(\s+", "(", repaired)
+    repaired = re.sub(r"\s+\)", ")", repaired)
+    return repaired.strip()
+
+
+def _prices_look_plausible(prices: list[int]) -> bool:
+    if not prices:
+        return False
+    return all(500 <= price <= 10000 for price in prices)
+
+
+def _row_has_alpha_text_in_price_window(
+    row: list[str | None],
+    start_col: int,
+    end_col: int,
+) -> bool:
+    for cell in row[max(0, start_col) : min(len(row), end_col)]:
+        if cell is None:
+            continue
+        text = str(cell).strip()
+        if any(ch.isalpha() for ch in text):
+            return True
+    return False
+
+
+def _next_fuel_boundary(fuel_cols: list[int], idx: int, row_len: int) -> int:
+    if idx + 1 < len(fuel_cols):
+        return fuel_cols[idx + 1]
+    return min(row_len, fuel_cols[idx] + 3)

@@ -137,13 +137,20 @@ async def get_ewura_dashboard_summary(
     return await _fuel_service(db).get_dashboard_summary()
 
 
-@router.get("/fuel/ewura/rollups", response_model=list[EwuraFuelRollupRead])
+@router.get("/fuel/ewura/rollups", response_model=Page[EwuraFuelRollupRead])
 async def get_ewura_rollups(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     level: Annotated[str, Query(pattern="^(city|region)$")] = "city",
     fuel_type: Annotated[str | None, Query()] = None,
-) -> list[EwuraFuelRollupRead]:
-    return await _fuel_service(db).get_rollups(level=level, fuel_type=fuel_type)
+    limit: Annotated[int, Query(ge=1, le=5000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Page[EwuraFuelRollupRead]:
+    return await _fuel_service(db).get_rollups_page(
+        level=level,
+        fuel_type=fuel_type,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/fuel/ewura/latest-extremes", response_model=EwuraFuelLatestExtremesRead | None)

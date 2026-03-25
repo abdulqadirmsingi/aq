@@ -97,6 +97,14 @@
     "selectHistoryYear": "Choose a history year to load older records",
     "locationPlaceholder": "Search a town, city, or region",
     "paginationSummary": "Showing {start}-{end} of {total} records",
+    "tabsLabel": "Energy sections",
+    "tabs": {
+      "overview": "Overview",
+      "retail": "Retail",
+      "wholesale": "Wholesale",
+      "rollups": "Rollups",
+      "insights": "Insights"
+    },
     "notAvailable": "Not available",
     "retail": "Retail",
     "wholesale": "Wholesale",

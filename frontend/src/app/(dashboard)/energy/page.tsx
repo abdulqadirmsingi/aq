@@ -1,6 +1,6 @@
 import { EnergyFeature } from "@/features/energy";
 import { getEnergyPageData } from "@/services/energy";
-import type { EnergyQueryState } from "@/features/energy/types";
+import type { EnergyQueryState, EnergyTabId } from "@/features/energy/types";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -21,9 +21,24 @@ function readInt(value: string | string[] | undefined): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+function readTab(value: string | string[] | undefined): EnergyTabId {
+  const raw = readSingleValue(value);
+  if (
+    raw === "retail"
+    || raw === "wholesale"
+    || raw === "rollups"
+    || raw === "insights"
+    || raw === "overview"
+  ) {
+    return raw;
+  }
+  return "overview";
+}
+
 export default async function EnergyPage({ searchParams }: EnergyPageProps) {
   const params = await searchParams;
   const query: EnergyQueryState = {
+    activeTab: readTab(params.tab),
     fuelType: readSingleValue(params.fuelType),
     locationQuery: readSingleValue(params.locationQuery),
     retailHistoryYear: readInt(params.retailHistoryYear),
@@ -32,6 +47,7 @@ export default async function EnergyPage({ searchParams }: EnergyPageProps) {
     retailHistoryOffset: readInt(params.retailHistoryOffset) ?? 0,
     wholesaleLatestOffset: readInt(params.wholesaleLatestOffset) ?? 0,
     wholesaleHistoryOffset: readInt(params.wholesaleHistoryOffset) ?? 0,
+    rollupsOffset: readInt(params.rollupsOffset) ?? 0,
   };
   const data = await getEnergyPageData(query);
 

@@ -172,5 +172,6 @@ export interface EwuraFuelRunLogRead {
 
 export type EwuraFuelObservationPage = ApiPage<EwuraFuelObservationRead>;
 export type EwuraFuelLatestPricePage = ApiPage<EwuraFuelLatestPriceRead>;
+export type EwuraFuelRollupPage = ApiPage<EwuraFuelRollupRead>;
 export type EwuraFuelRunPage = ApiPage<EwuraFuelRunRead>;
 export type EwuraFuelRunLogPage = ApiPage<EwuraFuelRunLogRead>;

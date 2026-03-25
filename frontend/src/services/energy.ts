@@ -8,7 +8,7 @@ import type {
   EwuraFuelLatestPricePage,
   EwuraFuelMonthlyTrendRead,
   EwuraFuelObservationPage,
-  EwuraFuelRollupRead,
+  EwuraFuelRollupPage,
 } from "@/types/api";
 import type { EnergyPageData, EnergyQueryState } from "@/features/energy/types";
 import { apiFetch } from "./api-client";
@@ -38,6 +38,8 @@ interface TrendOptions {
 interface RollupOptions {
   level?: "city" | "region";
   fuelType?: string;
+  limit?: number;
+  offset?: number;
 }
 
 function emptyDashboardSummary(): EwuraFuelDashboardSummaryRead {
@@ -97,6 +99,18 @@ function emptyLatestPricePage(limit = ENERGY_DEFAULTS.latestPricesLimit): EwuraF
 }
 
 function emptyObservationPage(limit = ENERGY_DEFAULTS.historyLimit): EwuraFuelObservationPage {
+  return {
+    items: [],
+    meta: {
+      limit,
+      offset: 0,
+      total: 0,
+      has_next: false,
+    },
+  };
+}
+
+function emptyRollupPage(limit = ENERGY_DEFAULTS.rollupsLimit): EwuraFuelRollupPage {
   return {
     items: [],
     meta: {
@@ -170,11 +184,13 @@ export async function getEnergyFilters(): Promise<EwuraFuelFiltersRead> {
 
 export async function getEnergyRollups(
   options: RollupOptions = {},
-): Promise<EwuraFuelRollupRead[]> {
-  return apiFetch<EwuraFuelRollupRead[]>(API_ENDPOINTS.energy.ewura.rollups, {
+): Promise<EwuraFuelRollupPage> {
+  return apiFetch<EwuraFuelRollupPage>(API_ENDPOINTS.energy.ewura.rollups, {
     query: {
       level: options.level ?? ENERGY_DEFAULTS.rollupLevel,
       fuel_type: options.fuelType,
+      limit: options.limit ?? ENERGY_DEFAULTS.rollupsLimit,
+      offset: options.offset ?? 0,
     },
   });
 }
@@ -261,7 +277,15 @@ export async function getEnergyPageData(query: EnergyQueryState): Promise<Energy
     ),
     safeRequest(getEnergyFilters, emptyFilters()).then(normalizeEwuraFuelFilters),
     safeRequest(getEnergyAvailableMonths, []),
-    safeRequest(() => getEnergyRollups({ fuelType: query.fuelType }), []),
+    safeRequest(
+      () =>
+        getEnergyRollups({
+          fuelType: query.fuelType,
+          limit: ENERGY_DEFAULTS.rollupsLimit,
+          offset: query.rollupsOffset,
+        }),
+      emptyRollupPage(),
+    ),
     safeRequest(() => getEnergyLatestExtremes(query.fuelType), null),
     safeRequest(getEnergyInsights, []),
   ]);

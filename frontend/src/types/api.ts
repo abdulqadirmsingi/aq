@@ -13,6 +13,7 @@ export type {
   EwuraFuelMonthlyTrendRead,
   EwuraFuelObservationPage,
   EwuraFuelObservationRead,
+  EwuraFuelRollupPage,
   EwuraFuelRollupRead,
   EwuraFuelRunLogPage,
   EwuraFuelRunLogRead,

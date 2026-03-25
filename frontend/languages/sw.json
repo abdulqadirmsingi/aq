@@ -97,6 +97,14 @@
     "selectHistoryYear": "Chagua mwaka wa historia ili kupakia rekodi za zamani",
     "locationPlaceholder": "Tafuta mji, jiji, au mkoa",
     "paginationSummary": "Inaonyesha {start}-{end} kati ya rekodi {total}",
+    "tabsLabel": "Sehemu za nishati",
+    "tabs": {
+      "overview": "Muhtasari",
+      "retail": "Rejareja",
+      "wholesale": "Jumla",
+      "rollups": "Muhtasari",
+      "insights": "Maarifa"
+    },
     "notAvailable": "Haipatikani",
     "retail": "Rejareja",
     "wholesale": "Jumla",

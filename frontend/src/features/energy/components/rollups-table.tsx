@@ -1,14 +1,17 @@
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
-import type { EwuraFuelRollupRead } from "@/types/api";
+import type { EwuraFuelRollupPage, EwuraFuelRollupRead } from "@/types/api";
 import { getTranslations } from "next-intl/server";
+import { TablePagination } from "./table-pagination";
+import type { EnergyQueryState } from "../types";
 
 interface RollupsTableProps {
-  data: EwuraFuelRollupRead[];
+  data: EwuraFuelRollupPage;
+  query: EnergyQueryState;
 }
 
-export async function RollupsTable({ data }: RollupsTableProps) {
+export async function RollupsTable({ data, query }: RollupsTableProps) {
   const t = await getTranslations();
 
   const columns = [
@@ -47,9 +50,17 @@ export async function RollupsTable({ data }: RollupsTableProps) {
       <SectionHeader title={t("energy.rollups")} description={t("energy.rollupsDescription")} />
       <DataTable
         columns={columns}
-        data={data}
+        data={data.items}
         keyExtractor={(item) => `${item.group_name}-${item.fuel_type}-${item.snapshot_date}`}
         emptyMessage={t("common.noData")}
+      />
+      <TablePagination
+        query={query}
+        offsetKey="rollupsOffset"
+        limit={data.meta.limit}
+        offset={data.meta.offset}
+        total={data.meta.total}
+        hasNext={data.meta.has_next}
       />
     </div>
   );

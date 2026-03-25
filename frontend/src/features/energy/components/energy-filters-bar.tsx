@@ -11,6 +11,9 @@ interface EnergyFiltersBarProps {
 
 export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps) {
   const t = await getTranslations();
+  const retailSnapshot = filters.retail_latest_snapshot_month_label ?? t("energy.notAvailable");
+  const wholesaleSnapshot =
+    filters.wholesale_latest_snapshot_month_label ?? t("energy.notAvailable");
 
   return (
     <div className="space-y-4">
@@ -19,18 +22,32 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
         description={
           filters.retail_latest_snapshot_month_label
             ? t("energy.filtersDescription", {
-                retailMonth: filters.retail_latest_snapshot_month_label,
-                wholesaleMonth:
-                  filters.wholesale_latest_snapshot_month_label ?? t("energy.notAvailable"),
+                retailMonth: retailSnapshot,
+                wholesaleMonth: wholesaleSnapshot,
               })
             : t("energy.filtersDescriptionFallback")
         }
       />
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="border-[3px] border-neutral-950 bg-white px-4 py-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+            {t("energy.latestRetailPrices")}
+          </p>
+          <p className="mt-2 text-lg font-black text-neutral-950">{retailSnapshot}</p>
+        </div>
+        <div className="border-[3px] border-neutral-950 bg-white px-4 py-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+            {t("energy.latestWholesalePrices")}
+          </p>
+          <p className="mt-2 text-lg font-black text-neutral-950">{wholesaleSnapshot}</p>
+        </div>
+      </div>
       <form
         action={ROUTES.energy}
         method="get"
-        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:grid-cols-5"
+        className="grid gap-4 border-[3px] border-neutral-950 bg-[#f7f1df] p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] lg:grid-cols-[1.1fr_1.4fr_1fr_1fr_auto]"
       >
+        <input type="hidden" name="tab" value={query.activeTab} />
         <label className="space-y-2 text-sm font-black uppercase tracking-[0.16em] text-neutral-900">
           <span>{t("energy.fuelType")}</span>
           <select
@@ -86,7 +103,7 @@ export async function EnergyFiltersBar({ filters, query }: EnergyFiltersBarProps
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-3">
+        <div className="flex items-end gap-3 lg:justify-end">
           <button
             type="submit"
             className="border-[3px] border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"

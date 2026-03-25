@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.common.pagination import Page, build_page
 from app.modules.energy.schemas.fuel import (
     EwuraFuelDashboardSummaryRead,
     EwuraFuelInsightRead,
@@ -51,6 +52,22 @@ class FuelInsightServiceMixin:
                 )
             )
         return rollups
+
+    async def get_rollups_page(
+        self,
+        *,
+        level: str,
+        fuel_type: str | None,
+        limit: int,
+        offset: int,
+    ) -> Page[EwuraFuelRollupRead]:
+        items = await self.get_rollups(level=level, fuel_type=fuel_type)
+        return build_page(
+            items[offset : offset + limit],
+            total=len(items),
+            limit=limit,
+            offset=offset,
+        )
 
     async def get_latest_extremes(
         self,

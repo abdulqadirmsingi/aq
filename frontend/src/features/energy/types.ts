@@ -7,10 +7,13 @@ import type {
   EwuraFuelLatestPricePage,
   EwuraFuelMonthlyTrendRead,
   EwuraFuelObservationPage,
-  EwuraFuelRollupRead,
+  EwuraFuelRollupPage,
 } from "@/types/api";
 
+export type EnergyTabId = "overview" | "retail" | "wholesale" | "rollups" | "insights";
+
 export interface EnergyQueryState {
+  activeTab: EnergyTabId;
   fuelType?: string;
   locationQuery?: string;
   retailHistoryYear?: number;
@@ -19,6 +22,7 @@ export interface EnergyQueryState {
   retailHistoryOffset: number;
   wholesaleLatestOffset: number;
   wholesaleHistoryOffset: number;
+  rollupsOffset: number;
 }
 
 export interface EnergyPageData {
@@ -31,7 +35,7 @@ export interface EnergyPageData {
   filters: EwuraFuelFiltersRead;
   query: EnergyQueryState;
   availableMonths: EwuraFuelAvailableMonthRead[];
-  rollups: EwuraFuelRollupRead[];
+  rollups: EwuraFuelRollupPage;
   latestExtremes: EwuraFuelLatestExtremesRead | null;
   insights: EwuraFuelInsightRead[];
 }

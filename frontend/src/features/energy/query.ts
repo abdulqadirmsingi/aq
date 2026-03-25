@@ -11,6 +11,9 @@ export function buildEnergyHref(
     ...query,
   };
 
+  if (next.activeTab && next.activeTab !== "overview") {
+    params.set("tab", next.activeTab);
+  }
   if (next.fuelType) {
     params.set("fuelType", next.fuelType);
   }
@@ -34,6 +37,9 @@ export function buildEnergyHref(
   }
   if (next.wholesaleHistoryOffset > 0) {
     params.set("wholesaleHistoryOffset", String(next.wholesaleHistoryOffset));
+  }
+  if (next.rollupsOffset > 0) {
+    params.set("rollupsOffset", String(next.rollupsOffset));
   }
 
   const queryString = params.toString();
