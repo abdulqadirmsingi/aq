@@ -132,6 +132,7 @@
     "demand": "Demand",
     "openings": "Openings",
     "growing": "Growing",
+    "stable": "Stable",
     "declining": "Declining"
   }
 }
