@@ -18,7 +18,8 @@ class EwuraFuelObservationRead(BaseModel):
     document_url: str
     content_sha256: str = Field(max_length=64)
     published_date: date | None
-    location: str
+    location_id: UUID | None
+    raw_location_text: str
     fuel_type: str
     price: int
     unit: str

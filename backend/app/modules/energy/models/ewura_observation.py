@@ -40,7 +40,7 @@ class EwuraFuelObservation(Base):
     document_url: Mapped[str] = mapped_column(Text(), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     published_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
-    location: Mapped[str] = mapped_column(String(200), nullable=False)
+    raw_location_text: Mapped[str] = mapped_column("raw_location_text", String(200), nullable=False)
     fuel_type: Mapped[str] = mapped_column(String(32), nullable=False)
     price: Mapped[int] = mapped_column(Integer(), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False, default="TZS/Litre")

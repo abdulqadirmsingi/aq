@@ -17,6 +17,8 @@ def parse_price_cell(raw: str | None) -> int | None:
     s = str(raw).strip()
     if not s or s in {"-", "—", "–", "n/a", "na", "*"}:
         return None
+    if "%" in s:
+        return None
     s = re.sub(r"(?i)\s*(tzs|tsh|tshs|/l|per\s*litre?)\s*", "", s)
     s = s.replace(",", "").replace(" ", "").strip()
     match = re.search(r"-?\d+(?:\.\d+)?", s)
@@ -25,5 +27,7 @@ def parse_price_cell(raw: str | None) -> int | None:
     try:
         value = float(match.group())
     except ValueError:
+        return None
+    if value < 0:
         return None
     return int(round(value))

@@ -186,13 +186,13 @@ class EwuraPersistenceStore:
             INSERT INTO ewura_fuel_observations (
                 source_id, scraper_run_id, location_id, source_label,
                 document_url, content_sha256, published_date,
-                location, fuel_type, price, unit, recorded_at
+                raw_location_text, fuel_type, price, unit, recorded_at
             ) VALUES (
                 :source_id, :scraper_run_id, :location_id, :source_label,
                 :document_url, :sha, :published_date,
-                :location, :fuel_type, :price, :unit, :recorded_at
+                :raw_location_text, :fuel_type, :price, :unit, :recorded_at
             )
-            ON CONFLICT (content_sha256, location, fuel_type, recorded_at) DO NOTHING
+            ON CONFLICT (content_sha256, raw_location_text, fuel_type, recorded_at) DO NOTHING
             """,
         )
         inserted = 0
@@ -209,7 +209,7 @@ class EwuraPersistenceStore:
                         "document_url": payload.document_url,
                         "sha": payload.content_sha256,
                         "published_date": published_date,
-                        "location": rec.location,
+                        "raw_location_text": rec.location,
                         "fuel_type": rec.fuel_type,
                         "price": rec.price,
                         "unit": rec.unit,

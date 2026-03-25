@@ -79,7 +79,12 @@ def _continuation_candidate(
         if c is not None
     ]
     for row in table[:10]:
-        if any(parse_price_cell(_cell_at(row, c)) is not None for c in fuel_cols):
+        parsed_prices = [
+            parse_price_cell(_cell_at(row, c))
+            for c in fuel_cols
+            if parse_price_cell(_cell_at(row, c)) is not None
+        ]
+        if len(parsed_prices) >= 2:
             return True
     return False
 
@@ -115,10 +120,15 @@ def _rows_from_table(
             continue
         if _looks_like_header_again(loc) or _looks_like_bad_location(loc):
             continue
+        parsed_prices: list[tuple[FuelType, int]] = []
         for fuel_type, col in fuel_specs:
             price = parse_price_cell(_cell_at(row, col))
             if price is None:
                 continue
+            parsed_prices.append((fuel_type, price))
+        if len(parsed_prices) < 2:
+            continue
+        for fuel_type, price in parsed_prices:
             out.append(
                 FuelPriceRecord(
                     location=loc,
@@ -149,6 +159,9 @@ def _looks_like_header_again(location: str) -> bool:
         "petrol",
         "diesel",
         "kerosene",
+        "cap price",
+        "cap prices",
+        "prices",
         "pms",
         "ago",
         "paraffin",
@@ -159,7 +172,7 @@ def _looks_like_header_again(location: str) -> bool:
         "jiji",
         "mkoa",
     }
-    return loc_norm in header_tokens
+    return loc_norm in header_tokens or ("cap" in loc_norm and "price" in loc_norm)
 
 
 def _normalize_location(cell: str | None) -> str:

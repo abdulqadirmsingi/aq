@@ -28,6 +28,7 @@ def test_parse_price_cell() -> None:
     assert parse_price_cell("-") is None
     assert parse_price_cell(None) is None
     assert parse_price_cell("n/a") is None
+    assert parse_price_cell("-5.41%") is None
 
 
 def test_header_detector_finds_fuels() -> None:
@@ -50,6 +51,18 @@ def test_header_detector_prefers_town_over_serial_column() -> None:
     ]
     cmap = HeaderDetector.detect(table)
     assert cmap is not None
+    assert cmap.location_col == 1
+
+
+def test_header_detector_uses_previous_header_row_for_location_column() -> None:
+    table = [
+        ["S.No", "Town", "Cap Prices", None, None],
+        [None, None, "Petrol", "Diesel", "Kerosene"],
+        ["1", "Dodoma", "100", "200", "300"],
+    ]
+    cmap = HeaderDetector.detect(table)
+    assert cmap is not None
+    assert cmap.header_row_index == 1
     assert cmap.location_col == 1
 
 

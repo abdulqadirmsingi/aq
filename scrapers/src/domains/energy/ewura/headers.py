@@ -78,6 +78,11 @@ class HeaderDetector:
             if not row:
                 continue
             norms = [_normalize_cell(c) for c in row]
+            prev_norms = (
+                [_normalize_cell(c) for c in table[row_idx - 1]]
+                if row_idx > 0
+                else None
+            )
             candidates: list[tuple[int, str, int]] = []
             for col_idx, norm in enumerate(norms):
                 for fuel, syns in cls._FUEL_SYNONYMS.items():
@@ -96,7 +101,7 @@ class HeaderDetector:
                 fuel_to_col[fuel] = col_idx
             if len(assigned_fuels) < 2:
                 continue
-            location_col = cls._pick_location_col(norms, assigned_cols)
+            location_col = cls._pick_location_col(norms, prev_norms, assigned_cols)
             return ColumnMap(
                 header_row_index=row_idx,
                 location_col=location_col,
@@ -107,20 +112,27 @@ class HeaderDetector:
         return None
 
     @staticmethod
-    def _pick_location_col(row_norms: list[str], fuel_cols: set[int]) -> int:
+    def _pick_location_col(
+        row_norms: list[str],
+        prev_row_norms: list[str] | None,
+        fuel_cols: set[int],
+    ) -> int:
         candidates = [j for j in range(len(row_norms)) if j not in fuel_cols]
         if not candidates:
             return 0
 
         for col in candidates:
-            norm = row_norms[col]
+            norm = _combined_header_text(row_norms, prev_row_norms, col)
             if any(keyword in norm for keyword in HeaderDetector._LOCATION_KEYWORDS):
                 return col
 
         non_serial = [
             col
             for col in candidates
-            if not any(keyword == row_norms[col] for keyword in HeaderDetector._SERIAL_KEYWORDS)
+            if not any(
+                keyword == _combined_header_text(row_norms, prev_row_norms, col)
+                for keyword in HeaderDetector._SERIAL_KEYWORDS
+            )
         ]
         if non_serial:
             return non_serial[0]
@@ -132,3 +144,16 @@ def _normalize_cell(cell: str | None) -> str:
         return ""
     s = str(cell).lower().strip()
     return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def _combined_header_text(
+    row_norms: list[str],
+    prev_row_norms: list[str] | None,
+    col: int,
+) -> str:
+    parts: list[str] = []
+    if prev_row_norms is not None and col < len(prev_row_norms) and prev_row_norms[col]:
+        parts.append(prev_row_norms[col])
+    if col < len(row_norms) and row_norms[col]:
+        parts.append(row_norms[col])
+    return " ".join(parts).strip()
