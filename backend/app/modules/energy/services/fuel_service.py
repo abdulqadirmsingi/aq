@@ -162,13 +162,14 @@ class FuelService(FuelInsightServiceMixin, FuelFormattingMixin):
         latest_snapshot_date = await self._repository.get_latest_snapshot_date(
             market_segment=market_segment
         )
+        exclude_snapshot_date = None if year is not None else latest_snapshot_date
         rows = await self._repository.get_history(
             fuel_type=fuel_type,
             location_id=location_id,
             location_query=location_query,
             year=year,
             market_segment=market_segment,
-            exclude_snapshot_date=latest_snapshot_date,
+            exclude_snapshot_date=exclude_snapshot_date,
             offset=offset,
             limit=limit,
         )
@@ -178,7 +179,7 @@ class FuelService(FuelInsightServiceMixin, FuelFormattingMixin):
             location_query=location_query,
             location_id=location_id,
             market_segment=market_segment,
-            exclude_snapshot_date=latest_snapshot_date,
+            exclude_snapshot_date=exclude_snapshot_date,
         )
         return build_page(
             [self._to_observation(row) for row in rows],

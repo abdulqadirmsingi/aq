@@ -23,8 +23,9 @@ export async function EnergyTabs({ query }: EnergyTabsProps) {
         return (
           <Link
             key={tabId}
-            href={buildEnergyHref({ activeTab: tabId }, query)}
+            href={buildEnergyHref(_tabQuery(tabId, query), query)}
             aria-selected={isActive}
+            scroll={false}
             className={
               isActive
                 ? "border-[3px] border-neutral-950 bg-neutral-950 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white"
@@ -37,4 +38,33 @@ export async function EnergyTabs({ query }: EnergyTabsProps) {
       })}
     </div>
   );
+}
+
+function _tabQuery(tabId: EnergyTabId, query: EnergyQueryState): Partial<EnergyQueryState> {
+  const next: Partial<EnergyQueryState> = {
+    activeTab: tabId,
+    retailLatestOffset: 0,
+    retailHistoryOffset: 0,
+    wholesaleLatestOffset: 0,
+    wholesaleHistoryOffset: 0,
+    rollupsOffset: 0,
+  };
+
+  if (tabId !== "retail") {
+    next.retailHistoryYear = undefined;
+  }
+  if (tabId !== "wholesale") {
+    next.wholesaleHistoryYear = undefined;
+  }
+  if (tabId === "retail") {
+    next.wholesaleHistoryYear = undefined;
+  }
+  if (tabId === "wholesale") {
+    next.retailHistoryYear = undefined;
+  }
+
+  return {
+    ...query,
+    ...next,
+  };
 }

@@ -44,6 +44,7 @@ export async function TablePagination({
       <div className="flex gap-3">
         <Link
           href={buildEnergyHref(previousQuery, query)}
+          scroll={false}
           aria-disabled={offset === 0}
           className="border-[3px] border-neutral-950 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-neutral-950 aria-disabled:pointer-events-none aria-disabled:opacity-40"
         >
@@ -51,6 +52,7 @@ export async function TablePagination({
         </Link>
         <Link
           href={buildEnergyHref(nextQuery, query)}
+          scroll={false}
           aria-disabled={!hasNext}
           className="border-[3px] border-neutral-950 bg-neutral-950 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white aria-disabled:pointer-events-none aria-disabled:opacity-40"
         >
