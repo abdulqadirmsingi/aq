@@ -176,7 +176,7 @@ def _parse_non_cash_table(
     content_sha256: str,
 ) -> list[NormalizedFxObservation]:
     observations: list[NormalizedFxObservation] = []
-    for row_index, row in enumerate(table.select("tbody tr"), start=1):
+    for row_index, row in enumerate(table.select("tr"), start=1):
         cells = [cell.get_text(" ", strip=True) for cell in row.select("td")]
         if len(cells) < 4:
             continue
@@ -216,7 +216,7 @@ def _parse_cash_table(
     content_sha256: str,
 ) -> list[NormalizedFxObservation]:
     observations: list[NormalizedFxObservation] = []
-    for row_index, row in enumerate(table.select("tbody tr"), start=1):
+    for row_index, row in enumerate(table.select("tr"), start=1):
         cells = [cell.get_text(" ", strip=True) for cell in row.select("td")]
         if len(cells) < 6:
             continue

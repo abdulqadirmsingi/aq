@@ -173,7 +173,7 @@
     "historyCoverage": "Monthly Coverage",
     "historyCoverageDescription": "Months available from BOT history",
     "recommendation": "Recommendation",
-    "recommendationDescription": "Best current option to {action} {instrument} using backend rankings",
+    "recommendationDescription": "Best current option to {action} {instrument} using rankings",
     "bestRate": "Best Rate",
     "rateLabel": "Relevant Rate",
     "botBenchmark": "BOT Benchmark",
