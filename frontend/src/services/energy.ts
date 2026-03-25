@@ -63,6 +63,27 @@ function emptyFilters(): EwuraFuelFiltersRead {
   };
 }
 
+/** Ensures list fields exist when the API returns a partial or legacy payload. */
+function normalizeEwuraFuelFilters(
+  raw: Partial<EwuraFuelFiltersRead> | EwuraFuelFiltersRead,
+): EwuraFuelFiltersRead {
+  const fallback = emptyFilters();
+  return {
+    fuel_types: Array.isArray(raw.fuel_types) ? raw.fuel_types : fallback.fuel_types,
+    market_segments: Array.isArray(raw.market_segments) ? raw.market_segments : fallback.market_segments,
+    retail_history_years: Array.isArray(raw.retail_history_years)
+      ? raw.retail_history_years
+      : fallback.retail_history_years,
+    wholesale_history_years: Array.isArray(raw.wholesale_history_years)
+      ? raw.wholesale_history_years
+      : fallback.wholesale_history_years,
+    retail_latest_snapshot_date: raw.retail_latest_snapshot_date ?? null,
+    retail_latest_snapshot_month_label: raw.retail_latest_snapshot_month_label ?? null,
+    wholesale_latest_snapshot_date: raw.wholesale_latest_snapshot_date ?? null,
+    wholesale_latest_snapshot_month_label: raw.wholesale_latest_snapshot_month_label ?? null,
+  };
+}
+
 function emptyLatestPricePage(limit = ENERGY_DEFAULTS.latestPricesLimit): EwuraFuelLatestPricePage {
   return {
     items: [],
@@ -238,7 +259,7 @@ export async function getEnergyPageData(query: EnergyQueryState): Promise<Energy
           : Promise.resolve(emptyObservationPage()),
       emptyObservationPage(),
     ),
-    safeRequest(getEnergyFilters, emptyFilters()),
+    safeRequest(getEnergyFilters, emptyFilters()).then(normalizeEwuraFuelFilters),
     safeRequest(getEnergyAvailableMonths, []),
     safeRequest(() => getEnergyRollups({ fuelType: query.fuelType }), []),
     safeRequest(() => getEnergyLatestExtremes(query.fuelType), null),
