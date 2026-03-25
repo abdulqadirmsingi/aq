@@ -18,32 +18,6 @@ export type {
   EwuraFuelRunRead,
 } from "./api/energy";
 
-export interface FuelPrice {
-  id: string;
-  fuelType: "petrol" | "diesel" | "kerosene";
-  region: string;
-  pricePerLitre: number;
-  previousPrice: number;
-  date: string;
-}
-
-export interface GasPrice {
-  id: string;
-  gasType: string;
-  weight: string;
-  price: number;
-  previousPrice: number;
-  date: string;
-}
-
-export interface ElectricityTariff {
-  id: string;
-  category: string;
-  ratePerKwh: number;
-  previousRate: number;
-  description: string;
-}
-
 export interface ExchangeRate {
   id: string;
   currencyPair: string;

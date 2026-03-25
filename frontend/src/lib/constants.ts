@@ -41,3 +41,11 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const API_DEFAULT_REVALIDATE_SECONDS = 300;
+
+export const ENERGY_DEFAULTS = {
+  latestPricesLimit: 12,
+  historyLimit: 12,
+  runsLimit: 5,
+  runLogsLimit: 8,
+  rollupLevel: "region",
+} as const;

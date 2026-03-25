@@ -1,15 +1,244 @@
-import { electricityTariffs, fuelPrices, gasPrices } from "@/data/energy";
-import type { ElectricityTariff, FuelPrice, GasPrice } from "@/types/api";
-import { simulateFetch } from "./api-client";
+import { ENERGY_DEFAULTS, API_ENDPOINTS } from "@/lib/constants";
+import type {
+  EwuraFuelAvailableMonthRead,
+  EwuraFuelDashboardSummaryRead,
+  EwuraFuelInsightRead,
+  EwuraFuelLatestExtremesRead,
+  EwuraFuelLatestPriceRead,
+  EwuraFuelMonthlyTrendRead,
+  EwuraFuelObservationPage,
+  EwuraFuelRollupRead,
+  EwuraFuelRunLogPage,
+  EwuraFuelRunPage,
+} from "@/types/api";
+import type { EnergyPageData } from "@/features/energy/types";
+import { apiFetch } from "./api-client";
 
-export async function getFuelPrices(): Promise<FuelPrice[]> {
-  return simulateFetch(fuelPrices);
+interface HistoryOptions {
+  year?: number;
+  fuelType?: string;
+  locationQuery?: string;
+  limit?: number;
+  offset?: number;
 }
 
-export async function getGasPrices(): Promise<GasPrice[]> {
-  return simulateFetch(gasPrices);
+interface LatestPricesOptions {
+  fuelType?: string;
+  locationQuery?: string;
 }
 
-export async function getElectricityTariffs(): Promise<ElectricityTariff[]> {
-  return simulateFetch(electricityTariffs);
+interface TrendOptions {
+  year?: number;
+  fuelType?: string;
+}
+
+interface RollupOptions {
+  level?: "city" | "region";
+  fuelType?: string;
+}
+
+interface RunsOptions {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+interface RunLogsOptions {
+  level?: string;
+  eventType?: string;
+  limit?: number;
+  offset?: number;
+}
+
+function getRunLogsPath(runId: string): string {
+  return `${API_ENDPOINTS.energy.ewura.runs}/${runId}/logs`;
+}
+
+function emptyDashboardSummary(): EwuraFuelDashboardSummaryRead {
+  return {
+    latest_summary: null,
+    latest_prices_preview: [],
+    current_year_trends: [],
+    available_months: [],
+    insights: [],
+  };
+}
+
+function emptyObservationPage(limit = ENERGY_DEFAULTS.historyLimit): EwuraFuelObservationPage {
+  return {
+    items: [],
+    meta: {
+      limit,
+      offset: 0,
+      total: 0,
+      has_next: false,
+    },
+  };
+}
+
+function emptyRunPage(limit = ENERGY_DEFAULTS.runsLimit): EwuraFuelRunPage {
+  return {
+    items: [],
+    meta: {
+      limit,
+      offset: 0,
+      total: 0,
+      has_next: false,
+    },
+  };
+}
+
+function emptyRunLogPage(limit = ENERGY_DEFAULTS.runLogsLimit): EwuraFuelRunLogPage {
+  return {
+    items: [],
+    meta: {
+      limit,
+      offset: 0,
+      total: 0,
+      has_next: false,
+    },
+  };
+}
+
+async function safeRequest<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await loader();
+  } catch {
+    return fallback;
+  }
+}
+
+export async function getEnergyDashboardSummary(): Promise<EwuraFuelDashboardSummaryRead> {
+  return apiFetch<EwuraFuelDashboardSummaryRead>(API_ENDPOINTS.energy.ewura.dashboardSummary);
+}
+
+export async function getEnergyLatestPrices(
+  options: LatestPricesOptions = {},
+): Promise<EwuraFuelLatestPriceRead[]> {
+  return apiFetch<EwuraFuelLatestPriceRead[]>(API_ENDPOINTS.energy.ewura.latestPrices, {
+    query: {
+      fuel_type: options.fuelType,
+      location_query: options.locationQuery,
+    },
+  });
+}
+
+export async function getEnergyCurrentYearTrends(
+  options: TrendOptions = {},
+): Promise<EwuraFuelMonthlyTrendRead[]> {
+  return apiFetch<EwuraFuelMonthlyTrendRead[]>(API_ENDPOINTS.energy.ewura.currentYearTrends, {
+    query: {
+      year: options.year,
+      fuel_type: options.fuelType,
+    },
+  });
+}
+
+export async function getEnergyHistory(
+  options: HistoryOptions = {},
+): Promise<EwuraFuelObservationPage> {
+  return apiFetch<EwuraFuelObservationPage>(API_ENDPOINTS.energy.ewura.history, {
+    query: {
+      year: options.year,
+      fuel_type: options.fuelType,
+      location_query: options.locationQuery,
+      limit: options.limit ?? ENERGY_DEFAULTS.historyLimit,
+      offset: options.offset ?? 0,
+    },
+  });
+}
+
+export async function getEnergyAvailableMonths(): Promise<EwuraFuelAvailableMonthRead[]> {
+  return apiFetch<EwuraFuelAvailableMonthRead[]>(API_ENDPOINTS.energy.ewura.availableMonths);
+}
+
+export async function getEnergyRollups(
+  options: RollupOptions = {},
+): Promise<EwuraFuelRollupRead[]> {
+  return apiFetch<EwuraFuelRollupRead[]>(API_ENDPOINTS.energy.ewura.rollups, {
+    query: {
+      level: options.level ?? ENERGY_DEFAULTS.rollupLevel,
+      fuel_type: options.fuelType,
+    },
+  });
+}
+
+export async function getEnergyLatestExtremes(
+  fuelType?: string,
+): Promise<EwuraFuelLatestExtremesRead | null> {
+  return apiFetch<EwuraFuelLatestExtremesRead | null>(API_ENDPOINTS.energy.ewura.latestExtremes, {
+    query: {
+      fuel_type: fuelType,
+    },
+  });
+}
+
+export async function getEnergyInsights(): Promise<EwuraFuelInsightRead[]> {
+  return apiFetch<EwuraFuelInsightRead[]>(API_ENDPOINTS.energy.ewura.insights);
+}
+
+export async function getEnergyRuns(options: RunsOptions = {}): Promise<EwuraFuelRunPage> {
+  return apiFetch<EwuraFuelRunPage>(API_ENDPOINTS.energy.ewura.runs, {
+    query: {
+      status: options.status,
+      limit: options.limit ?? ENERGY_DEFAULTS.runsLimit,
+      offset: options.offset ?? 0,
+    },
+  });
+}
+
+export async function getEnergyRunLogs(
+  runId: string,
+  options: RunLogsOptions = {},
+): Promise<EwuraFuelRunLogPage> {
+  return apiFetch<EwuraFuelRunLogPage>(getRunLogsPath(runId), {
+    query: {
+      level: options.level,
+      event_type: options.eventType,
+      limit: options.limit ?? ENERGY_DEFAULTS.runLogsLimit,
+      offset: options.offset ?? 0,
+    },
+  });
+}
+
+export async function getEnergyPageData(): Promise<EnergyPageData> {
+  const [
+    dashboardSummary,
+    latestPrices,
+    currentYearTrends,
+    history,
+    availableMonths,
+    rollups,
+    latestExtremes,
+    insights,
+    runs,
+  ] = await Promise.all([
+    safeRequest(getEnergyDashboardSummary, emptyDashboardSummary()),
+    safeRequest(() => getEnergyLatestPrices(), []),
+    safeRequest(() => getEnergyCurrentYearTrends(), []),
+    safeRequest(() => getEnergyHistory(), emptyObservationPage()),
+    safeRequest(getEnergyAvailableMonths, []),
+    safeRequest(() => getEnergyRollups(), []),
+    safeRequest(() => getEnergyLatestExtremes(), null),
+    safeRequest(getEnergyInsights, []),
+    safeRequest(() => getEnergyRuns(), emptyRunPage()),
+  ]);
+
+  const latestRun = runs.items[0];
+  const runLogs = latestRun
+    ? await safeRequest(() => getEnergyRunLogs(latestRun.id), emptyRunLogPage())
+    : null;
+
+  return {
+    dashboardSummary,
+    latestPrices,
+    currentYearTrends,
+    history,
+    availableMonths,
+    rollups,
+    latestExtremes,
+    insights,
+    runs,
+    runLogs,
+  };
 }
