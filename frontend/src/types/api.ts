@@ -20,6 +20,26 @@ export type {
   EwuraFuelRunPage,
   EwuraFuelRunRead,
 } from "./api/energy";
+export type {
+  BotExchangeRateAvailableMonthRead,
+  BotExchangeRateFiltersRead,
+  BotExchangeRatePage,
+  BotExchangeRateRead,
+  ExchangeRateBenchmarkGapRead,
+  ExchangeRateBenchmarkGapSummaryRead,
+  ExchangeRateBestRateRead,
+  ExchangeRateBestRateSummaryRead,
+  ExchangeRateComparisonRead,
+  ExchangeRateLatestComparisonRead,
+  ExchangeRateOpportunityRead,
+  ExchangeRateOpportunitySummaryRead,
+  ExchangeRateRecommendationCandidateRead,
+  ExchangeRateRecommendationRead,
+  ExchangeRateSpreadRead,
+  ExchangeRateSpreadSummaryRead,
+  ExchangeRateStalenessRead,
+  ExchangeRateStalenessSummaryRead,
+} from "./api/money";
 
 export interface ExchangeRate {
   id: string;

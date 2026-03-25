@@ -41,6 +41,19 @@ export const API_ENDPOINTS = {
       runs: "/energy/fuel/ewura/runs",
     },
   },
+  money: {
+    exchangeRates: {
+      botFilters: "/money/exchange-rates/bot/filters",
+      botHistory: "/money/exchange-rates/bot/history",
+      latestComparison: "/money/exchange-rates/latest-comparison",
+      recommendation: "/money/exchange-rates/recommendation",
+      spreads: "/money/exchange-rates/analytics/spreads",
+      benchmarkGaps: "/money/exchange-rates/analytics/benchmark-gaps",
+      staleness: "/money/exchange-rates/analytics/staleness",
+      bestRates: "/money/exchange-rates/analytics/best-rates",
+      opportunities: "/money/exchange-rates/analytics/opportunities",
+    },
+  },
 } as const;
 
 export const API_DEFAULT_REVALIDATE_SECONDS = 300;
@@ -52,4 +65,10 @@ export const ENERGY_DEFAULTS = {
   runLogsLimit: 8,
   rollupsLimit: 12,
   rollupLevel: "region",
+} as const;
+
+export const MONEY_DEFAULTS = {
+  defaultInstrumentCode: "USD",
+  historyLimit: 12,
+  quickInstrumentLimit: 12,
 } as const;
