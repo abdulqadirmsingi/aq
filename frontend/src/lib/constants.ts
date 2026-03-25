@@ -15,9 +15,9 @@ export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string }[
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
   { key: "energyMonitoring", translationKey: "nav.energyMonitoring", icon: "activity" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
-  { key: "livingCost", translationKey: "nav.livingCost", icon: "home" },
-  { key: "medicine", translationKey: "nav.medicine", icon: "pill" },
-  { key: "hr", translationKey: "nav.hr", icon: "users" },
+  // { key: "livingCost", translationKey: "nav.livingCost", icon: "home" },
+  // { key: "medicine", translationKey: "nav.medicine", icon: "pill" },
+  // { key: "hr", translationKey: "nav.hr", icon: "users" },
 ];
 
 export const CURRENCY = "TZS";
