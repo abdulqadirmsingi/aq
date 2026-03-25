@@ -34,7 +34,10 @@ class ScraperSettings(BaseSettings):
     ewura_run_pdf_limit: int | None = Field(
         default=None,
         ge=1,
-        description="When set, ``EwuraFuelScraper.run`` ingests at most this many PDFs",
+        description=(
+            "When set, ``EwuraFuelScraper.run`` ingests at most this many "
+            "PDF/DOCX bulletins (name kept for backward compatibility)"
+        ),
     )
 
 

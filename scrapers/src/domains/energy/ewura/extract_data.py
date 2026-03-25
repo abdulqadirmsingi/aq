@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from src.domains.energy.ewura.headers import ColumnMap, HeaderDetector
@@ -18,18 +19,65 @@ def tables_to_fuel_records(
     Parse all tables; accumulate records and human-readable warnings.
 
     Carries forward the last non-empty location when continuation rows omit it.
+    Reuses the previous table's column map when a fragment has no header row
+    (common when a cap-price table spans PDF pages).
     """
     records: list[FuelPriceRecord] = []
     warnings: list[str] = []
+    last_cmap: ColumnMap | None = None
     for idx, table in enumerate(tables):
         cmap = HeaderDetector.detect(table)
+        used_continuation = False
+        if cmap is None and last_cmap is not None and _continuation_candidate(
+            table,
+            last_cmap,
+        ):
+            cmap = replace(last_cmap, header_row_index=-1)
+            used_continuation = True
+            warnings.append(f"table_{idx}_continuation")
         if cmap is None:
             warnings.append(f"table_{idx}_no_header")
             continue
+        if not used_continuation:
+            last_cmap = cmap
         chunk, w = _rows_from_table(table, cmap, effective_date)
         records.extend(chunk)
         warnings.extend(f"table_{idx}_{m}" for m in w)
     return records, warnings
+
+
+def _table_width(table: list[list[str | None]]) -> int:
+    return max((len(r) for r in table), default=0)
+
+
+def _max_col_index(cmap: ColumnMap) -> int:
+    cols = [cmap.location_col, cmap.petrol_col, cmap.diesel_col, cmap.kerosene_col]
+    nums = [c for c in cols if c is not None]
+    return max(nums) if nums else 0
+
+
+def _continuation_candidate(
+    table: list[list[str | None]],
+    last_cmap: ColumnMap,
+) -> bool:
+    if not table or HeaderDetector.detect(table) is not None:
+        return False
+    need = _max_col_index(last_cmap) + 1
+    if _table_width(table) < need:
+        return False
+    fuel_cols = [
+        c
+        for c in (
+            last_cmap.petrol_col,
+            last_cmap.diesel_col,
+            last_cmap.kerosene_col,
+        )
+        if c is not None
+    ]
+    for row in table[:10]:
+        if any(parse_price_cell(_cell_at(row, c)) is not None for c in fuel_cols):
+            return True
+    return False
 
 
 def _rows_from_table(

@@ -1,4 +1,4 @@
-"""Phase 2: in-memory PDF parsing and numeric/header helpers."""
+"""Phase 2–3: PDF/DOCX parsing helpers and synthetic PDF fixtures."""
 
 from __future__ import annotations
 
@@ -11,13 +11,13 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from src.core.http_client import ScraperHttpClient
+from src.domains.energy.ewura.document_pipeline import (
+    fetch_and_parse_cap_price_document,
+)
 from src.domains.energy.ewura.headers import HeaderDetector
 from src.domains.energy.ewura.models import FilteredDocumentRef
 from src.domains.energy.ewura.numbers import parse_price_cell
-from src.domains.energy.ewura.pdf_pipeline import (
-    fetch_and_parse_cap_price_pdf,
-    parse_cap_price_pdf_bytes,
-)
+from src.domains.energy.ewura.pdf_pipeline import parse_cap_price_pdf_bytes
 from src.domains.energy.fuel_scraper import EwuraFuelScraper
 
 
@@ -89,19 +89,22 @@ def test_parse_cap_price_pdf_bytes_synthetic() -> None:
     assert all(r.price < 100_000 for r in out.payload.data)
 
 
-def test_fetch_and_parse_skips_docx() -> None:
+def test_fetch_and_parse_rejects_unknown_extension() -> None:
     ref = FilteredDocumentRef(
-        url="https://www.ewura.go.tz/uploads/documents/x.docx",
-        link_text="Cap Prices July 2025",
+        url=(
+            "https://www.ewura.go.tz/uploads/documents/"
+            "en-cap-prices-petroleum-weird.xyz"
+        ),
+        link_text="Cap Prices Petroleum 2026",
     )
     transport = httpx.MockTransport(lambda _r: httpx.Response(200))
     client = ScraperHttpClient(transport=transport)
     try:
-        out = fetch_and_parse_cap_price_pdf(client, ref, max_bytes=10_000_000)
+        out = fetch_and_parse_cap_price_document(client, ref, max_bytes=10_000_000)
     finally:
         client.close()
     assert out.ok is False
-    assert out.error == "unsupported_non_pdf"
+    assert out.error == "unsupported_format"
 
 
 def test_ewura_fuel_scraper_end_to_end_mock_pdf() -> None:
@@ -128,7 +131,7 @@ def test_ewura_fuel_scraper_end_to_end_mock_pdf() -> None:
             http_client=client,
             listing_url="https://www.ewura.go.tz/pages/petroleum-product-pricing",
         )
-        outcomes = scraper.ingest_cap_price_pdfs()
+        outcomes = scraper.ingest_cap_price_documents()
         assert len(outcomes) == 1
         assert outcomes[0].ok
         assert outcomes[0].payload and len(outcomes[0].payload.data) >= 1
