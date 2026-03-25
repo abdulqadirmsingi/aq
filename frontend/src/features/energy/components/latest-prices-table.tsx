@@ -1,18 +1,16 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TrendIndicator } from "@/components/ui/trend-indicator";
 import type { EwuraFuelLatestPriceRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface LatestPricesTableProps {
   data: EwuraFuelLatestPriceRead[];
 }
 
-export function LatestPricesTable({ data }: LatestPricesTableProps) {
-  const t = useTranslations();
+export async function LatestPricesTable({ data }: LatestPricesTableProps) {
+  const t = await getTranslations();
 
   const columns = [
     {

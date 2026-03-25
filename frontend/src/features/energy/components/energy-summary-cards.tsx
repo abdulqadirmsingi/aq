@@ -1,8 +1,6 @@
-"use client";
-
 import { DataCard } from "@/components/ui/data-card";
 import type { EwuraFuelLatestExtremesRead, EwuraFuelLatestSummaryRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface EnergySummaryCardsProps {
   summary: EwuraFuelLatestSummaryRead | null;
@@ -10,12 +8,12 @@ interface EnergySummaryCardsProps {
   monthsCount: number;
 }
 
-export function EnergySummaryCards({
+export async function EnergySummaryCards({
   summary,
   latestExtremes,
   monthsCount,
 }: EnergySummaryCardsProps) {
-  const t = useTranslations();
+  const t = await getTranslations();
 
   if (!summary) {
     return null;

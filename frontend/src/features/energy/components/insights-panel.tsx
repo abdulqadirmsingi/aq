@@ -1,16 +1,14 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { EwuraFuelInsightRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface InsightsPanelProps {
   insights: EwuraFuelInsightRead[];
 }
 
-export function InsightsPanel({ insights }: InsightsPanelProps) {
-  const t = useTranslations();
+export async function InsightsPanel({ insights }: InsightsPanelProps) {
+  const t = await getTranslations();
 
   return (
     <div>

@@ -6,6 +6,10 @@ import calendar
 from datetime import date
 from decimal import Decimal
 
+from app.modules.energy.location_normalization import (
+    infer_tanzania_region_name,
+    is_country_name,
+)
 from app.modules.energy.repositories.fuel_repository import (
     FuelAvailableMonthRecord,
     FuelLatestPriceRecord,
@@ -26,6 +30,11 @@ from app.modules.energy.schemas.fuel import (
 class FuelFormattingMixin:
     def _to_observation(self, row: FuelObservationRecord) -> EwuraFuelObservationRead:
         price = self._to_int(row.price)
+        region_name = self._normalize_region_name(
+            row.canonical_region_name,
+            row.canonical_location_name,
+            row.raw_location_text,
+        )
         return EwuraFuelObservationRead(
             id=row.id,
             source_id=row.source_id,
@@ -36,7 +45,7 @@ class FuelFormattingMixin:
             published_date=row.published_date,
             location_id=row.location_id,
             canonical_location_name=row.canonical_location_name,
-            canonical_region_name=row.canonical_region_name,
+            canonical_region_name=region_name,
             raw_location_text=row.raw_location_text,
             fuel_type=row.fuel_type,
             price=price,
@@ -56,6 +65,11 @@ class FuelFormattingMixin:
             if previous_price not in (None, 0) and absolute_change is not None
             else None
         )
+        region_name = self._normalize_region_name(
+            row.canonical_region_name,
+            row.canonical_location_name,
+            row.raw_location_text,
+        )
         return EwuraFuelLatestPriceRead(
             snapshot_date=row.snapshot_date,
             snapshot_month_label=self._month_label(row.snapshot_date),
@@ -67,7 +81,7 @@ class FuelFormattingMixin:
             ),
             location_id=row.location_id,
             canonical_location_name=row.canonical_location_name,
-            canonical_region_name=row.canonical_region_name,
+            canonical_region_name=region_name,
             raw_location_text=row.raw_location_text,
             fuel_type=row.fuel_type,
             price=price,
@@ -148,8 +162,26 @@ class FuelFormattingMixin:
         if level == "city":
             return item.canonical_location_name or item.raw_location_text
         if level == "region":
-            return item.canonical_region_name
+            return infer_tanzania_region_name(
+                item.canonical_region_name,
+                item.canonical_location_name,
+                item.raw_location_text,
+            )
         return None
+
+    @staticmethod
+    def _normalize_region_name(
+        canonical_region_name: str | None,
+        canonical_location_name: str | None,
+        raw_location_text: str | None,
+    ) -> str | None:
+        if canonical_region_name and not is_country_name(canonical_region_name):
+            return canonical_region_name
+
+        return infer_tanzania_region_name(
+            canonical_location_name,
+            raw_location_text,
+        )
 
     @staticmethod
     def _to_int(value: Decimal | int | None) -> int:

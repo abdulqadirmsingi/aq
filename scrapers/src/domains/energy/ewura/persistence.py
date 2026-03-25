@@ -33,6 +33,39 @@ _FUEL_METRICS: dict[str, tuple[str, str]] = {
         "Monthly EWURA retail cap price for kerosene.",
     ),
 }
+_TZ_REGION_SEEDS: tuple[tuple[str, str, str], ...] = (
+    ("Arusha", "ARU", "TZ/arusha"),
+    ("Dar es Salaam", "DSM", "TZ/dar-es-salaam"),
+    ("Dodoma", "DOD", "TZ/dodoma"),
+    ("Geita", "GET", "TZ/geita"),
+    ("Iringa", "IRI", "TZ/iringa"),
+    ("Kagera", "KAG", "TZ/kagera"),
+    ("Katavi", "KTV", "TZ/katavi"),
+    ("Kigoma", "KIG", "TZ/kigoma"),
+    ("Kilimanjaro", "KIL", "TZ/kilimanjaro"),
+    ("Lindi", "LIN", "TZ/lindi"),
+    ("Manyara", "MNY", "TZ/manyara"),
+    ("Mara", "MAR", "TZ/mara"),
+    ("Mbeya", "MBY", "TZ/mbeya"),
+    ("Mjini Magharibi", "MJM", "TZ/mjini-magharibi"),
+    ("Morogoro", "MOR", "TZ/morogoro"),
+    ("Mtwara", "MTW", "TZ/mtwara"),
+    ("Mwanza", "MWZ", "TZ/mwanza"),
+    ("Njombe", "NJO", "TZ/njombe"),
+    ("Pemba North", "PNR", "TZ/pemba-north"),
+    ("Pemba South", "PSR", "TZ/pemba-south"),
+    ("Pwani", "PWA", "TZ/pwani"),
+    ("Rukwa", "RKW", "TZ/rukwa"),
+    ("Ruvuma", "RUV", "TZ/ruvuma"),
+    ("Shinyanga", "SHY", "TZ/shinyanga"),
+    ("Simiyu", "SIM", "TZ/simiyu"),
+    ("Singida", "SIN", "TZ/singida"),
+    ("Songwe", "SNG", "TZ/songwe"),
+    ("Tabora", "TAB", "TZ/tabora"),
+    ("Tanga", "TNG", "TZ/tanga"),
+    ("Unguja North", "UNG-N", "TZ/unguja-north"),
+    ("Unguja South", "UNG-S", "TZ/unguja-south"),
+)
 
 
 def _slugify(value: str) -> str:
@@ -129,7 +162,37 @@ class EwuraPersistenceStore:
             ),
             {"path": _TZ_COUNTRY_PATH},
         ).scalar_one()
+        self._ensure_region_locations(conn, country_id)
         return category_id, source_id, country_id
+
+    def _ensure_region_locations(self, conn: Connection, country_id: UUID) -> None:
+        for region_name, region_code, region_path in _TZ_REGION_SEEDS:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO locations (
+                        id, name, code, level, parent_id, country_code, path,
+                        is_active, created_at, updated_at
+                    )
+                    VALUES (
+                        gen_random_uuid(), :name, :code, 'region', :parent_id, 'TZA', :path,
+                        true, now(), now()
+                    )
+                    ON CONFLICT (path) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        code = EXCLUDED.code,
+                        level = EXCLUDED.level,
+                        parent_id = EXCLUDED.parent_id,
+                        updated_at = now()
+                    """,
+                ),
+                {
+                    "name": region_name,
+                    "code": region_code,
+                    "parent_id": country_id,
+                    "path": region_path,
+                },
+            )
 
     def ensure_metric_ids(self) -> dict[str, UUID]:
         with self._engine.begin() as conn:
@@ -330,6 +393,49 @@ class EwuraPersistenceStore:
         raw_location_text: str,
         country_id: UUID,
     ) -> UUID:
+        region_name = self._infer_region_name(raw_location_text)
+        if region_name is not None:
+            region = conn.execute(
+                text(
+                    """
+                    SELECT id, path
+                    FROM locations
+                    WHERE path = :path
+                    LIMIT 1
+                    """,
+                ),
+                {"path": f"{_TZ_COUNTRY_PATH}/{_slugify(region_name)}"},
+            ).mappings().first()
+            if region is not None:
+                if raw_location_text.strip().casefold() == region_name.casefold():
+                    return region["id"]
+
+                child_path = f"{region['path']}/{_slugify(raw_location_text)}"
+                return conn.execute(
+                    text(
+                        """
+                        INSERT INTO locations (
+                            id, name, level, parent_id, country_code, path,
+                            is_active, created_at, updated_at
+                        )
+                        VALUES (
+                            gen_random_uuid(), :name, 'other', :parent_id, 'TZA', :path,
+                            true, now(), now()
+                        )
+                        ON CONFLICT (path) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            parent_id = EXCLUDED.parent_id,
+                            updated_at = now()
+                        RETURNING id
+                        """,
+                    ),
+                    {
+                        "name": raw_location_text,
+                        "parent_id": region["id"],
+                        "path": child_path,
+                    },
+                ).scalar_one()
+
         existing = conn.execute(
             text(
                 """
@@ -392,6 +498,17 @@ class EwuraPersistenceStore:
                 "path": path,
             },
         ).scalar_one()
+
+    @staticmethod
+    def _infer_region_name(raw_location_text: str) -> str | None:
+        stripped = raw_location_text.strip()
+        for region_name, _region_code, _region_path in _TZ_REGION_SEEDS:
+            if stripped.casefold() == region_name.casefold():
+                return region_name
+            prefix = f"{region_name} ("
+            if stripped.casefold().startswith(prefix.casefold()):
+                return region_name
+        return None
 
     def _upsert_datapoint(
         self,

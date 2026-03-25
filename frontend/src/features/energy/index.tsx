@@ -2,7 +2,6 @@ import { EnergySummaryCards } from "./components/energy-summary-cards";
 import { HistoryTable } from "./components/history-table";
 import { InsightsPanel } from "./components/insights-panel";
 import { LatestPricesTable } from "./components/latest-prices-table";
-import { MonitoringSection } from "./components/monitoring-section";
 import { RollupsTable } from "./components/rollups-table";
 import { TrendsTable } from "./components/trends-table";
 import type { EnergyPageData } from "./types";
@@ -24,7 +23,6 @@ export function EnergyFeature({ data }: EnergyFeatureProps) {
       <HistoryTable history={data.history} />
       <RollupsTable data={data.rollups} />
       <InsightsPanel insights={data.insights} />
-      <MonitoringSection runs={data.runs} runLogs={data.runLogs} />
     </div>
   );
 }

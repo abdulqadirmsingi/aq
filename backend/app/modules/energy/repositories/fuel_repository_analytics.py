@@ -23,12 +23,31 @@ from app.modules.energy.repositories.fuel_repository_shared import (
 
 class FuelAnalyticsRepositoryMixin:
     async def get_latest_snapshot_date(self) -> date | None:
+        snapshot_date_expr = cast(DataPoint.recorded_at, Date)
         result = await self._session.execute(
-            select(cast(func.max(DataPoint.recorded_at), Date)).select_from(
-                build_base_from_clause()
+            select(
+                snapshot_date_expr.label("snapshot_date"),
+                func.count(func.distinct(DataPoint.location_id)).label("locations_count"),
+                func.count(func.distinct(Metric.slug)).label("metrics_count"),
             )
+            .select_from(build_base_from_clause())
+            .group_by(snapshot_date_expr)
+            .order_by(snapshot_date_expr.desc())
         )
-        return result.scalar_one_or_none()
+        rows = result.mappings().all()
+        if not rows:
+            return None
+
+        max_locations = max(int(row["locations_count"] or 0) for row in rows)
+        threshold = max(1, int(max_locations * 0.8))
+        for row in rows:
+            if (
+                int(row["locations_count"] or 0) >= threshold
+                and int(row["metrics_count"] or 0) == len(EWURA_METRIC_SLUGS)
+            ):
+                return row["snapshot_date"]
+
+        return rows[0]["snapshot_date"]
 
     async def list_latest_prices(
         self,

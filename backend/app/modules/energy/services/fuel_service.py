@@ -92,7 +92,10 @@ class FuelService(FuelInsightServiceMixin, FuelFormattingMixin):
         year: int | None,
         fuel_type: str | None,
     ) -> list[EwuraFuelMonthlyTrendRead]:
-        effective_year = year or datetime.now(UTC).year
+        latest_snapshot_date = await self._repository.get_latest_snapshot_date()
+        effective_year = year or (
+            latest_snapshot_date.year if latest_snapshot_date is not None else datetime.now(UTC).year
+        )
         rows = await self._repository.get_current_year_trends(
             year=effective_year,
             fuel_type=fuel_type,

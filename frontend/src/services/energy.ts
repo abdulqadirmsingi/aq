@@ -8,8 +8,6 @@ import type {
   EwuraFuelMonthlyTrendRead,
   EwuraFuelObservationPage,
   EwuraFuelRollupRead,
-  EwuraFuelRunLogPage,
-  EwuraFuelRunPage,
 } from "@/types/api";
 import type { EnergyPageData } from "@/features/energy/types";
 import { apiFetch } from "./api-client";
@@ -37,23 +35,6 @@ interface RollupOptions {
   fuelType?: string;
 }
 
-interface RunsOptions {
-  status?: string;
-  limit?: number;
-  offset?: number;
-}
-
-interface RunLogsOptions {
-  level?: string;
-  eventType?: string;
-  limit?: number;
-  offset?: number;
-}
-
-function getRunLogsPath(runId: string): string {
-  return `${API_ENDPOINTS.energy.ewura.runs}/${runId}/logs`;
-}
-
 function emptyDashboardSummary(): EwuraFuelDashboardSummaryRead {
   return {
     latest_summary: null,
@@ -65,30 +46,6 @@ function emptyDashboardSummary(): EwuraFuelDashboardSummaryRead {
 }
 
 function emptyObservationPage(limit = ENERGY_DEFAULTS.historyLimit): EwuraFuelObservationPage {
-  return {
-    items: [],
-    meta: {
-      limit,
-      offset: 0,
-      total: 0,
-      has_next: false,
-    },
-  };
-}
-
-function emptyRunPage(limit = ENERGY_DEFAULTS.runsLimit): EwuraFuelRunPage {
-  return {
-    items: [],
-    meta: {
-      limit,
-      offset: 0,
-      total: 0,
-      has_next: false,
-    },
-  };
-}
-
-function emptyRunLogPage(limit = ENERGY_DEFAULTS.runLogsLimit): EwuraFuelRunLogPage {
   return {
     items: [],
     meta: {
@@ -177,30 +134,6 @@ export async function getEnergyInsights(): Promise<EwuraFuelInsightRead[]> {
   return apiFetch<EwuraFuelInsightRead[]>(API_ENDPOINTS.energy.ewura.insights);
 }
 
-export async function getEnergyRuns(options: RunsOptions = {}): Promise<EwuraFuelRunPage> {
-  return apiFetch<EwuraFuelRunPage>(API_ENDPOINTS.energy.ewura.runs, {
-    query: {
-      status: options.status,
-      limit: options.limit ?? ENERGY_DEFAULTS.runsLimit,
-      offset: options.offset ?? 0,
-    },
-  });
-}
-
-export async function getEnergyRunLogs(
-  runId: string,
-  options: RunLogsOptions = {},
-): Promise<EwuraFuelRunLogPage> {
-  return apiFetch<EwuraFuelRunLogPage>(getRunLogsPath(runId), {
-    query: {
-      level: options.level,
-      event_type: options.eventType,
-      limit: options.limit ?? ENERGY_DEFAULTS.runLogsLimit,
-      offset: options.offset ?? 0,
-    },
-  });
-}
-
 export async function getEnergyPageData(): Promise<EnergyPageData> {
   const [
     dashboardSummary,
@@ -211,7 +144,6 @@ export async function getEnergyPageData(): Promise<EnergyPageData> {
     rollups,
     latestExtremes,
     insights,
-    runs,
   ] = await Promise.all([
     safeRequest(getEnergyDashboardSummary, emptyDashboardSummary()),
     safeRequest(() => getEnergyLatestPrices(), []),
@@ -221,13 +153,7 @@ export async function getEnergyPageData(): Promise<EnergyPageData> {
     safeRequest(() => getEnergyRollups(), []),
     safeRequest(() => getEnergyLatestExtremes(), null),
     safeRequest(getEnergyInsights, []),
-    safeRequest(() => getEnergyRuns(), emptyRunPage()),
   ]);
-
-  const latestRun = runs.items[0];
-  const runLogs = latestRun
-    ? await safeRequest(() => getEnergyRunLogs(latestRun.id), emptyRunLogPage())
-    : null;
 
   return {
     dashboardSummary,
@@ -238,7 +164,5 @@ export async function getEnergyPageData(): Promise<EnergyPageData> {
     rollups,
     latestExtremes,
     insights,
-    runs,
-    runLogs,
   };
 }

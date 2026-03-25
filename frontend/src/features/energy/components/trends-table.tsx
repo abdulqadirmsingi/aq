@@ -1,17 +1,15 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { EwuraFuelMonthlyTrendRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface TrendsTableProps {
   data: EwuraFuelMonthlyTrendRead[];
 }
 
-export function TrendsTable({ data }: TrendsTableProps) {
-  const t = useTranslations();
+export async function TrendsTable({ data }: TrendsTableProps) {
+  const t = await getTranslations();
 
   const columns = [
     {

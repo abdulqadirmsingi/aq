@@ -1,10 +1,13 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
-import type { EwuraFuelRunLogPage, EwuraFuelRunLogRead, EwuraFuelRunPage, EwuraFuelRunRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import type {
+  EwuraFuelRunLogPage,
+  EwuraFuelRunLogRead,
+  EwuraFuelRunPage,
+  EwuraFuelRunRead,
+} from "@/types/api";
+import { getTranslations } from "next-intl/server";
 
 interface MonitoringSectionProps {
   runs: EwuraFuelRunPage;
@@ -14,14 +17,20 @@ interface MonitoringSectionProps {
 function getRunBadgeVariant(status: string): "default" | "success" | "warning" | "danger" {
   const normalized = status.toLowerCase();
 
-  if (normalized === "success" || normalized === "completed") return "success";
-  if (normalized === "running" || normalized === "queued") return "warning";
-  if (normalized === "failed" || normalized === "error") return "danger";
+  if (normalized === "success" || normalized === "completed" || normalized === "succeeded") {
+    return "success";
+  }
+  if (normalized === "running" || normalized === "queued" || normalized === "pending") {
+    return "warning";
+  }
+  if (normalized === "failed" || normalized === "error" || normalized === "cancelled") {
+    return "danger";
+  }
   return "default";
 }
 
-export function MonitoringSection({ runs, runLogs }: MonitoringSectionProps) {
-  const t = useTranslations();
+export async function MonitoringSection({ runs, runLogs }: MonitoringSectionProps) {
+  const t = await getTranslations();
 
   const runColumns = [
     {

@@ -1,17 +1,15 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { EwuraFuelObservationPage, EwuraFuelObservationRead } from "@/types/api";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface HistoryTableProps {
   history: EwuraFuelObservationPage;
 }
 
-export function HistoryTable({ history }: HistoryTableProps) {
-  const t = useTranslations();
+export async function HistoryTable({ history }: HistoryTableProps) {
+  const t = await getTranslations();
 
   const columns = [
     {
