@@ -2,23 +2,34 @@
 
 A modular, scalable data intelligence platform that collects, stores, and serves time-series data across multiple domains.
 
-
-//running backend 
-uvicorn app.main:app --reload
-
 ## Quick Start
 
 ```bash
-make setup   # Copy env files
-make up      # Start all services (Docker)
-make migrate # Run database migrations (required after clone / new migrations)
+make setup            # Copy env files (root, backend, frontend, scrapers)
+make install-backend  # backend/.venv + pip install (first time)
+make install-scrapers # scrapers/.venv + pip install (first time)
+make migrate          # Alembic (uses backend/.venv)
+make up               # Docker: all services
 ```
 
 - **Frontend**: http://localhost:3000  
 - **Backend API**: http://localhost:8000  
 - **API Docs**: http://localhost:8000/docs  
 
-### Run the backend locally (without Docker)
+### Local dev (Make + venvs)
+
+| Command | What it does |
+|--------|----------------|
+| `make dev-backend` | FastAPI with reload (`backend/.venv`) |
+| `make scraper-ewura-once` | One EWURA ingest run, no Celery (`scrapers/.venv`) |
+| `make celery-worker` | Celery worker (`scrapers/.venv`) |
+| `make celery-beat` | Celery Beat (`scrapers/.venv`) |
+| `make celery-call-ewura` | Enqueue one EWURA task (worker must be running) |
+| `make test-scrapers` | Pytest in `scrapers/` |
+
+**Scraper `DATABASE_URL`:** put it in [`scrapers/.env`](scrapers/.env) (see [`scrapers/.env.example`](scrapers/.env.example)). `make scraper-ewura-once` / Celery run with cwd `scrapers/`, so pydantic-settings loads that file. Use the **same Postgres** as the backend; `+asyncpg` URLs are converted to sync `+psycopg` for fingerprinting and row inserts. You can also `ln -s ../backend/.env scrapers/.env` to share one file.
+
+### Run the backend locally (without Make)
 
 ```bash
 cd backend

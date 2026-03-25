@@ -1,10 +1,14 @@
-.PHONY: help up down build logs migrate seed lint format test
+.PHONY: help up down build logs migrate migrate-create seed lint format test test-backend test-frontend test-scrapers
+.PHONY: install-backend install-scrapers dev-backend celery-worker celery-beat celery-call-ewura scraper-ewura-once
+
+# POSIX `sh` (dash): use `.` not `source` for venv activate.
+SHELL := /bin/sh
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}'
 
-# ── Docker ────────────────────────────────────
+# ── Docker ──────────────────────────────────── 
 up: ## Start all services
 	docker compose up -d
 
@@ -17,32 +21,60 @@ build: ## Rebuild all containers
 logs: ## Tail logs for all services
 	docker compose logs -f
 
-# ── Database ──────────────────────────────────
-migrate: ## Run Alembic migrations
-	cd backend && alembic upgrade head
+# ── Python venvs (backend / scrapers) ───────────
+install-backend: ## Create backend/.venv and install backend deps
+	test -d backend/.venv || python3 -m venv backend/.venv
+	cd backend && . .venv/bin/activate && pip install -r requirements.txt
 
-migrate-create: ## Create a new migration (usage: make migrate-create msg="description")
-	cd backend && alembic revision --autogenerate -m "$(msg)"
+install-scrapers: ## Create scrapers/.venv and install scraper deps
+	test -d scrapers/.venv || python3 -m venv scrapers/.venv
+	cd scrapers && . .venv/bin/activate && pip install -r requirements.txt
+
+# ── Database (backend venv) ─────────────────────
+migrate: ## Run Alembic migrations (uses backend/.venv)
+	cd backend && . .venv/bin/activate && alembic upgrade head
+
+migrate-create: ## New migration (usage: make migrate-create msg="description")
+	cd backend && . .venv/bin/activate && alembic revision --autogenerate -m "$(msg)"
 
 seed: ## Seed the database
 	bash infra/scripts/seed.sh
 
+# ── Run API & workers (local venvs) ─────────────
+dev-backend: ## Run FastAPI with reload (backend/.venv)
+	cd backend && . .venv/bin/activate && uvicorn app.main:app --reload
+
+celery-worker: ## Celery worker for scrapers (scrapers/.venv)
+	cd scrapers && . .venv/bin/activate && celery -A src.workers.celery_app worker --loglevel=info
+
+celery-beat: ## Celery Beat scheduler (scrapers/.venv)
+	cd scrapers && . .venv/bin/activate && celery -A src.workers.celery_app beat --loglevel=info
+
+celery-call-ewura: ## Enqueue one EWURA run (worker must be running)
+	cd scrapers && . .venv/bin/activate && celery -A src.workers.celery_app call scrapers.run_ewura_fuel
+
+scraper-ewura-once: ## Run EWURA scraper once in-process (no Celery; scrapers/.venv)
+	cd scrapers && . .venv/bin/activate && python -c "from src.domains.energy.fuel_scraper import EwuraFuelScraper; s = EwuraFuelScraper(); s.run(); s.close()"
+
 # ── Quality ───────────────────────────────────
 lint: ## Run linters
-	cd backend && ruff check .
+	cd backend && . .venv/bin/activate && ruff check .
 	cd frontend && npm run lint
 
 format: ## Auto-format code
-	cd backend && ruff format .
+	cd backend && . .venv/bin/activate && ruff format .
 	cd frontend && npm run format
 
-# ── Testing ───────────────────────────────────
+# ── Testing ────────────────────────────────────
 test: ## Run all tests
-	cd backend && pytest
+	cd backend && . .venv/bin/activate && pytest
 	cd frontend && npm test
 
 test-backend: ## Run backend tests only
-	cd backend && pytest -v
+	cd backend && . .venv/bin/activate && pytest -v
+
+test-scrapers: ## Run scraper tests only
+	cd scrapers && . .venv/bin/activate && pytest -v
 
 test-frontend: ## Run frontend tests only
 	cd frontend && npm test
