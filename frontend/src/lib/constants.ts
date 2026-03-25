@@ -10,14 +10,14 @@ export const ROUTES = {
 
 export type RouteKey = keyof typeof ROUTES;
 
-export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string }[] = [
+export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string; disabled?: boolean }[] = [
   { key: "dashboard", translationKey: "nav.dashboard", icon: "grid" },
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
-  { key: "energyMonitoring", translationKey: "nav.energyMonitoring", icon: "activity" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
-  // { key: "livingCost", translationKey: "nav.livingCost", icon: "home" },
-  // { key: "medicine", translationKey: "nav.medicine", icon: "pill" },
-  // { key: "hr", translationKey: "nav.hr", icon: "users" },
+  { key: "livingCost", translationKey: "nav.livingCost", icon: "home", disabled: true },
+  { key: "medicine", translationKey: "nav.medicine", icon: "pill", disabled: true },
+  { key: "hr", translationKey: "nav.hr", icon: "users", disabled: true },
+  { key: "energyMonitoring", translationKey: "nav.monitoring", icon: "activity" },
 ];
 
 export const CURRENCY = "TZS";

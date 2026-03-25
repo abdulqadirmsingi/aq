@@ -37,12 +37,13 @@
     "applyFilters": "Apply filters",
     "clear": "Clear",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "comingSoon": "Coming Soon"
   },
   "nav": {
     "dashboard": "Dashboard",
     "energy": "Energy",
-    "energyMonitoring": "Energy Monitoring",
+    "monitoring": "Monitoring",
     "money": "Money",
     "livingCost": "Living Cost",
     "medicine": "Medicine",

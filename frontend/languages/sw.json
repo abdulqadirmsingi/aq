@@ -37,12 +37,13 @@
     "applyFilters": "Tumia vichujio",
     "clear": "Futa",
     "previous": "Iliyopita",
-    "next": "Inayofuata"
+    "next": "Inayofuata",
+    "comingSoon": "Inakuja Hivi Karibuni"
   },
   "nav": {
     "dashboard": "Dashibodi",
     "energy": "Nishati",
-    "energyMonitoring": "Ufuatiliaji wa Nishati",
+    "monitoring": "Ufuatiliaji",
     "money": "Fedha",
     "livingCost": "Gharama za Maisha",
     "medicine": "Dawa",

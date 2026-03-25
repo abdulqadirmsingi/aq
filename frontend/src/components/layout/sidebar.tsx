@@ -64,6 +64,55 @@ export function Sidebar() {
           {NAV_ITEMS.map((item) => {
             const route = ROUTES[item.key];
             const active = isActive(route);
+            const isDisabled = item.disabled;
+
+            const content = (
+              <>
+                <div className="relative shrink-0">
+                  <NavIcon 
+                    name={item.icon} 
+                    className={cn(
+                      active ? "text-neutral-950" : "text-neutral-500 group-hover/item:text-white",
+                      isDisabled && "opacity-40 grayscale"
+                    )} 
+                  />
+                  {isDisabled && (
+                    <div className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-800 text-[8px] text-white ring-2 ring-neutral-950 transition-transform group-hover/item:scale-110">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="ml-4 hidden flex-col transition-opacity duration-500 group-hover/sidebar:flex">
+                  <span className={cn(
+                    "whitespace-nowrap text-sm font-bold tracking-tight",
+                    active ? "text-neutral-950" : "text-neutral-400 group-hover/item:text-white",
+                    isDisabled && "opacity-40"
+                  )}>
+                    {t(item.translationKey)}
+                  </span>
+                  {isDisabled && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                      {t("common.comingSoon")}
+                    </span>
+                  )}
+                </div>
+              </>
+            );
+
+            if (isDisabled) {
+              return (
+                <div
+                  key={item.key}
+                  title={t("common.comingSoon")}
+                  className="group/item relative flex h-12 w-12 cursor-not-allowed items-center justify-center rounded-2xl bg-transparent transition-all duration-500 hover:bg-neutral-900 group-hover/sidebar:w-48 group-hover/sidebar:justify-start group-hover/sidebar:px-5"
+                >
+                  {content}
+                </div>
+              );
+            }
 
             return (
               <Link
@@ -77,15 +126,7 @@ export function Sidebar() {
                     : "text-neutral-500 hover:bg-neutral-800 hover:text-white",
                 )}
               >
-                <div className="shrink-0">
-                  <NavIcon name={item.icon} className={cn(active ? "text-neutral-950" : "text-neutral-500 group-hover/item:text-white")} />
-                </div>
-                <span className={cn(
-                  "ml-4 hidden whitespace-nowrap text-sm font-bold tracking-tight opacity-0 transition-opacity duration-500 group-hover/sidebar:block group-hover/sidebar:opacity-100",
-                  active ? "text-neutral-950" : "text-neutral-400 group-hover/item:text-white"
-                )}>
-                  {t(item.translationKey)}
-                </span>
+                {content}
               </Link>
             );
           })}
