@@ -1,5 +1,3 @@
-"use client";
-
 import type { ExchangeRate, InflationRecord } from "@/types/api";
 import { ExchangeRateTable } from "./components/exchange-rate-table";
 import { InflationTable } from "./components/inflation-table";

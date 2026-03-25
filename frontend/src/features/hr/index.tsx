@@ -1,5 +1,3 @@
-"use client";
-
 import type { JobTrend, Salary } from "@/types/api";
 import { JobTrendTable } from "./components/job-trend-table";
 import { SalaryTable } from "./components/salary-table";

@@ -1,5 +1,3 @@
-"use client";
-
 import type { DrugPrice } from "@/types/api";
 import { DrugPriceTable } from "./components/drug-price-table";
 

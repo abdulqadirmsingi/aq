@@ -1,5 +1,3 @@
-"use client";
-
 import type { ElectricityTariff, FuelPrice, GasPrice } from "@/types/api";
 import { ElectricityTariffTable } from "./components/electricity-tariff-table";
 import { FuelPriceTable } from "./components/fuel-price-table";
