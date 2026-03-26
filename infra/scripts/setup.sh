@@ -20,4 +20,11 @@ if [ ! -f frontend/.env.local ]; then
   echo "    Created frontend/.env.local"
 fi
 
+if [ ! -f scrapers/.env ]; then
+  if [ -f scrapers/.env.example ]; then
+    cp scrapers/.env.example scrapers/.env
+    echo "    Created scrapers/.env from scrapers/.env.example"
+  fi
+fi
+
 echo "==> Setup complete. Run 'make up' to start services."
