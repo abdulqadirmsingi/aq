@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { EnergyFeature } from "@/features/energy";
 import { getEnergyPageData } from "@/services/energy";
 import type { EnergyQueryState, EnergyTabId } from "@/features/energy/types";
+import { buildPageMetadata, readQueryValue } from "@/lib/seo";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -33,6 +35,36 @@ function readTab(value: string | string[] | undefined): EnergyTabId {
     return raw;
   }
   return "overview";
+}
+
+export async function generateMetadata({
+  searchParams,
+}: EnergyPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const fuelType = readQueryValue(params.fuelType);
+  const locationQuery = readQueryValue(params.locationQuery);
+  const tab = readTab(params.tab);
+
+  const titleParts = ["Energy Data"];
+  if (fuelType) {
+    titleParts.unshift(`${fuelType.toUpperCase()} Prices`);
+  }
+
+  const locationLabel = locationQuery ? ` for ${locationQuery}` : "";
+  const tabLabel = tab === "overview" ? "overview" : tab.replaceAll("-", " ");
+  const detail = `${tabLabel} of EWURA fuel data${locationLabel}`.replace(/^./, (letter) =>
+    letter.toUpperCase(),
+  );
+
+  return buildPageMetadata({
+    title: titleParts.join(" "),
+    description: `Track regulated fuel pricing, history, and rollups${locationLabel} from AQ's energy data workspace.`,
+    path: "/energy",
+    query: params,
+    imageTitle: titleParts.join(" "),
+    imageDetail: detail,
+    keywords: ["energy data", "EWURA fuel prices", "Tanzania fuel dashboard"],
+  });
 }
 
 export default async function EnergyPage({ searchParams }: EnergyPageProps) {

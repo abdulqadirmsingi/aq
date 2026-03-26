@@ -275,7 +275,7 @@ Then add these GitHub repository secrets:
 - `CONTABO_USER` = `deploy`
 - `CONTABO_SSH_KEY` = the private SSH key contents for the deploy user
 
-After that, every push to `main` will:
+After that, every push to `main` will;
 
 1. SSH into the VPS
 2. `git pull` the latest code

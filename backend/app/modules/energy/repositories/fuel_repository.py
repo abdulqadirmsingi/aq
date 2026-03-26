@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.modules.energy.repositories.fuel_repository_analytics import (
     FuelAnalyticsRepositoryMixin,
 )
 from app.modules.energy.repositories.fuel_repository_observations import (
     FuelObservationRepositoryMixin,
-)
-from app.modules.energy.repositories.fuel_repository_shared import (
-    FuelAvailableMonthRecord,
-    FuelLatestPriceRecord,
-    FuelLatestSummaryRecord,
-    FuelMonthlyTrendRecord,
-    FuelObservationRecord,
 )
 
 
