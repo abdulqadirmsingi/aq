@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.common.pagination import Page, build_page
-from app.modules.energy.repositories.fuel_repository import (
-    FuelRepository,
-)
+from app.modules.energy.repositories.fuel_repository import FuelRepository
 from app.modules.energy.schemas.fuel import (
     EwuraFuelAvailableMonthRead,
-    EwuraFuelDashboardSummaryRead,
     EwuraFuelFiltersRead,
     EwuraFuelLatestPriceRead,
     EwuraFuelLatestSummaryRead,
-    EwuraFuelObservationRead,
     EwuraFuelMonthlyTrendRead,
+    EwuraFuelObservationRead,
 )
 from app.modules.energy.services.fuel_service_formatting import FuelFormattingMixin
 from app.modules.energy.services.fuel_service_insights import FuelInsightServiceMixin
