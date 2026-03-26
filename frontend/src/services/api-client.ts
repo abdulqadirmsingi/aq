@@ -51,8 +51,9 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   });
 
   if (!response.ok) {
+    const responseBody = await response.text().catch(() => "");
     throw new ApiClientError(
-      `API request failed with status ${response.status}`,
+      `API request failed with status ${response.status}${responseBody ? `: ${responseBody.slice(0, 300)}` : ""}`,
       response.status,
       url,
     );

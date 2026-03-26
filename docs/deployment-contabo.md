@@ -114,11 +114,13 @@ SECRET_KEY=<strong-random-secret>
 ENVIRONMENT=production
 DEBUG=false
 ALLOWED_ORIGINS=https://app.abdulqadirmsingi.com
+POSTGRES_PORT=5432
 ```
 
 Notes:
 
 - `BACKEND_PORT=8001` is intentional so you avoid conflicts with other apps on the server.
+- `POSTGRES_PORT=5432` publishes PostgreSQL only to `127.0.0.1` on the VPS so tools like DBeaver can connect through SSH tunneling without exposing the database publicly.
 - `ALLOWED_ORIGINS` must match the real frontend domain.
 - `DATABASE_URL` uses `db` as the hostname because that is the Docker service name.
 
@@ -194,6 +196,10 @@ NEXT_PUBLIC_API_URL=https://api.abdulqadirmsingi.com/api/v1
 
 Vercel will show you the DNS record to create. In many cases this is a CNAME for `app`.
 
+For this repo, if your real frontend domain is `data.abdulqadirmsingi.com`, use that instead of `app.abdulqadirmsingi.com` in both Vercel and `ALLOWED_ORIGINS`.
+
+Important: set the Vercel project root to `frontend`. Do not deploy the app under a `/frontend` URL path.
+
 ## Step 8: Create the DNS records
 
 In your DNS provider for `abdulqadirmsingi.com`:
@@ -226,7 +232,101 @@ Then open:
 
 Redis is only for Celery queueing and job coordination. PostgreSQL is the source of truth for the application data.
 
-## Step 10: Safe operations and updates
+## Why the browser may not show API requests
+
+The frontend uses the Next.js App Router and most pages fetch data on the server during rendering. That means:
+
+- the request often happens from the Vercel server, not the browser
+- you may not see the request in the browser Network tab on first page load
+- if `NEXT_PUBLIC_API_URL` is missing in production, the build should now fail instead of silently falling back to localhost
+
+If you need to confirm requests are happening, check:
+
+- Vercel function logs
+- the page HTML output
+- the backend access logs on the VPS
+
+## Step 10: Automatic deployment
+
+Vercel already supports automatic frontend deployment when the GitHub repo is connected. Every push to `main` triggers a new frontend deployment automatically.
+
+For the VPS backend, this repo now includes a GitHub Actions workflow in `.github/workflows/deploy.yml` that deploys after the `CI` workflow passes for `main`.
+
+Before it can work, do these one-time VPS steps:
+
+1. Ensure the `deploy` user can run Docker without `sudo`:
+
+```bash
+sudo usermod -aG docker deploy
+```
+
+2. Log out and SSH back in so the new group membership takes effect.
+
+3. Verify:
+
+```bash
+docker ps
+```
+
+Then add these GitHub repository secrets:
+
+- `CONTABO_HOST` = your VPS public IP or hostname
+- `CONTABO_PORT` = `22`
+- `CONTABO_USER` = `deploy`
+- `CONTABO_SSH_KEY` = the private SSH key contents for the deploy user
+
+After that, every push to `main` will:
+
+1. SSH into the VPS
+2. `git pull` the latest code
+3. rebuild Docker images
+4. run migrations
+5. restart `backend`, `celery_worker`, and `celery_beat`
+
+Recommended first test:
+
+- push once to `main`
+- open GitHub Actions
+- watch the `CI` workflow pass
+- watch the `Deploy` workflow run
+- verify `https://api.abdulqadirmsingi.com/health`
+
+## Step 11: Connecting DBeaver to the AQ database
+
+In production, PostgreSQL is intentionally private inside Docker and is not exposed publicly. The safest way to connect from DBeaver is with an SSH tunnel through the VPS.
+
+Use these DBeaver settings:
+
+- Database: PostgreSQL
+- Host: `127.0.0.1`
+- Port: `5432`
+- Database: `aq_db`
+- Username: `aq_user`
+- Password: the value from `POSTGRES_PASSWORD` in `.env.prod`
+
+SSH tab:
+
+- Use SSH Tunnel: enabled
+- Host/IP: your Contabo VPS IP
+- Port: `22`
+- User name: `deploy`
+- Authentication: your SSH private key
+
+If you prefer a direct local tunnel first, you can also run this on your computer:
+
+```bash
+ssh -L 5433:127.0.0.1:5432 deploy@your-vps-ip
+```
+
+Then in DBeaver use:
+
+- Host: `127.0.0.1`
+- Port: `5433`
+- Database: `aq_db`
+- Username: `aq_user`
+- Password: your `POSTGRES_PASSWORD`
+
+## Step 12: Safe operations and updates
 
 When updating the code on the VPS:
 
@@ -240,7 +340,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d backend cel
 
 This flow is safer than tearing everything down, and it reduces the chance of breaking your existing project on the same server.
 
-## Recommended checks before calling it done
+## Step 13: Recommended checks before calling it done
 
 - `docker compose ... ps` shows all AQ containers healthy/running
 - `curl https://api.abdulqadirmsingi.com/health` returns success
@@ -248,7 +348,7 @@ This flow is safer than tearing everything down, and it reduces the chance of br
 - `celery_beat` logs show schedules loading
 - frontend loads and shows live API data
 - browser network requests go to `api.abdulqadirmsingi.com`
-- CORS allows `https://app.abdulqadirmsingi.com`
+- CORS allows your real frontend domain, for example `https://data.abdulqadirmsingi.com`
 
 ## Important caution
 

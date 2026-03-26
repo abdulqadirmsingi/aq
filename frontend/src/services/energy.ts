@@ -125,7 +125,8 @@ function emptyRollupPage(limit = ENERGY_DEFAULTS.rollupsLimit): EwuraFuelRollupP
 async function safeRequest<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await loader();
-  } catch {
+  } catch (error) {
+    console.error("[energy-service] API request failed", error);
     return fallback;
   }
 }
