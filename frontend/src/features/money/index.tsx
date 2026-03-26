@@ -1,5 +1,4 @@
 import type { MoneyPageData } from "./types";
-import { getTranslations } from "next-intl/server";
 import { BotHistoryTable, ComparisonTable, GapTable, OpportunityTable, RecommendationPanel, SpreadTable, StalenessTable } from "./components/money-sections";
 import { MoneyFiltersBar } from "./components/money-filters-bar";
 import { MoneySummaryCards } from "./components/money-summary-cards";
@@ -8,13 +7,9 @@ interface MoneyFeatureProps {
   data: MoneyPageData;
 }
 
-export async function MoneyFeature({ data }: MoneyFeatureProps) {
-  const t = await getTranslations();
-
+export function MoneyFeature({ data }: MoneyFeatureProps) {
   return (
     <div className="space-y-8">
-      
-
       <MoneySummaryCards data={data} />
 
       <div className="border-[3px] border-neutral-950 bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
