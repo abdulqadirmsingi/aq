@@ -16,10 +16,7 @@ def iter_month_starts(first: date, last: date) -> Iterator[tuple[date, date]]:
     y, m = start_norm.year, start_norm.month
     while (y, m) <= (end_norm.year, end_norm.month):
         month_start = date(y, m, 1)
-        if m == 12:
-            next_month_start = date(y + 1, 1, 1)
-        else:
-            next_month_start = date(y, m + 1, 1)
+        next_month_start = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
         yield month_start, next_month_start
         if m == 12:
             y += 1
