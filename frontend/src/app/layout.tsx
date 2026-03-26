@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { getBaseMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-export const metadata: Metadata = {
-  title: "AQ — Data Intelligence Platform",
-  description: "Real-time insights across energy, money, living costs, medicine, and human resources.",
-};
+export const metadata: Metadata = getBaseMetadata();
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();

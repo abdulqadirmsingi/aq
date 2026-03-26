@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { MoneyFeature } from "@/features/money";
 import { getMoneyPageData } from "@/services/money";
 import type {
@@ -6,6 +7,7 @@ import type {
   MoneyCustomerAction,
   MoneyQueryState,
 } from "@/features/money/types";
+import { buildPageMetadata, readQueryValue } from "@/lib/seo";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -49,6 +51,32 @@ function readCashNoteBand(
     return raw;
   }
   return undefined;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: MoneyPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const instrumentCode = readQueryValue(params.instrumentCode) ?? "USD";
+  const customerAction = readCustomerAction(params.customerAction);
+  const channel = readChannel(params.channel);
+
+  const title = `${instrumentCode} Exchange Rates`;
+  const channelLabel = channel ? ` via ${channel.replaceAll("_", " ")}` : "";
+  const detail = `${customerAction === "buy" ? "Buying" : "Selling"} ${instrumentCode}${channelLabel}`.replace(
+    /^./,
+    (letter) => letter.toUpperCase(),
+  );
+
+  return buildPageMetadata({
+    title,
+    description: `Compare BOT, CRDB, and NMB foreign exchange signals for ${instrumentCode} in one AQ view.`,
+    path: "/money",
+    query: params,
+    imageTitle: title,
+    imageDetail: detail,
+    keywords: ["forex dashboard", "Tanzania exchange rates", `${instrumentCode} TZS`],
+  });
 }
 
 export default async function MoneyPage({ searchParams }: MoneyPageProps) {
