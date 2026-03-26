@@ -1,12 +1,37 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: actions/checkout@v4
-      # Deployment steps configured per hosting provider
+      - name: Deploy backend stack to Contabo
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          port: ${{ secrets.CONTABO_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /home/deploy/aq
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            docker compose --env-file .env.prod -f docker-compose.prod.yml build
+            docker compose --env-file .env.prod -f docker-compose.prod.yml --profile ops run --rm migrate
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d backend celery_worker celery_beat
+            docker compose --env-file .env.prod -f docker-compose.prod.yml ps

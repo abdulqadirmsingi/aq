@@ -24,7 +24,20 @@ export const CURRENCY = "TZS";
 
 export const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE_URL;
+function resolveApiBaseUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_API_URL must be set in production.");
+  }
+
+  return DEFAULT_API_BASE_URL;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export const API_ENDPOINTS = {
   energy: {

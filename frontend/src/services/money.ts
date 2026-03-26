@@ -143,7 +143,8 @@ function emptyOpportunities(
 async function safeRequest<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await loader();
-  } catch {
+  } catch (error) {
+    console.error("[money-service] API request failed", error);
     return fallback;
   }
 }
