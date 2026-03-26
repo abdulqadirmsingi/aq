@@ -90,9 +90,9 @@ export function getBaseMetadata(): Metadata {
       "theme-color": "#10273c",
     },
     icons: {
-      icon: "/images/aq-logo.jpg",
-      shortcut: "/images/aq-logo.jpg",
-      apple: "/images/aq-logo.jpg",
+      icon: "/images/aq-logo.png",
+      shortcut: "/images/aq-logo.png",
+      apple: "/images/aq-logo.png",
     },
     formatDetection: {
       telephone: false,

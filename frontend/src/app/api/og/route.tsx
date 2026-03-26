@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const detail =
     searchParams.get("detail")
     || "Historical records, current signals, and decision-ready intelligence for Tanzania";
-  const logoUrl = new URL("/images/aq-logo.jpg", getSiteUrl()).toString();
+  const logoUrl = new URL("/images/aq-logo.png", getSiteUrl()).toString();
 
   return new ImageResponse(
     (
