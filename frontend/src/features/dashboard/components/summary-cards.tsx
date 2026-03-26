@@ -26,6 +26,7 @@ export function SummaryCards({ summaries }: SummaryCardsProps) {
             value={item.value}
             change={item.change}
             trend={item.trend}
+            subtitle={item.subtitle}
             variant={isFeatured ? "featured" : "default"}
             className={
               isHero 

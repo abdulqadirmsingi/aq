@@ -1,6 +1,6 @@
 """Scraper configuration loaded from environment variables."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +16,10 @@ class ScraperSettings(BaseSettings):
     ewura_listing_url: str = Field(
         default="https://www.ewura.go.tz/pages/petroleum-product-pricing",
         description="HTML page listing petroleum cap price PDFs/DOCX",
+    )
+    bot_exchange_rates_url: str = Field(
+        default="https://www.bot.go.tz/exchangerate/excrates",
+        description="Bank of Tanzania daily exchange-rates table page.",
     )
     http_timeout_seconds: float = Field(
         default=45.0,
@@ -57,7 +61,7 @@ class ScraperSettings(BaseSettings):
         description="Ignore EWURA documents older than this year.",
     )
     ewura_max_year: int = Field(
-        default_factory=lambda: datetime.now(timezone.utc).year,
+        default_factory=lambda: datetime.now(UTC).year,
         ge=2000,
         le=2100,
         description="Ignore EWURA documents newer than this year.",

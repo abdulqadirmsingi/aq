@@ -1,11 +1,8 @@
-import { salaries } from "@/data/hr";
-import { rentPrices } from "@/data/living-cost";
-import { drugPrices } from "@/data/medicine";
-import { exchangeRates } from "@/data/money";
 import { computeChangePercent, computeTrend, formatNumber } from "@/lib/utils";
 import type { DomainSummary } from "@/types";
 import { simulateFetch } from "./api-client";
 import { getEnergyDashboardSummary } from "./energy";
+import { getMoneyDashboardSummary } from "./money";
 
 function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashboardSummary>>) {
   const summaryItems = summary.latest_summary?.items ?? [];
@@ -26,23 +23,11 @@ function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashb
 
 function buildSummaries(
   fuelSummary: Awaited<ReturnType<typeof getEnergyDashboardSummary>> | null,
+  moneySummary: Awaited<ReturnType<typeof getMoneyDashboardSummary>> | null,
 ): DomainSummary[] {
   const { currentAverage, previousAverage } = fuelSummary
     ? getFuelSummaryMetrics(fuelSummary)
     : { currentAverage: 0, previousAverage: 0 };
-
-  const usd = exchangeRates.find((r) => r.currencyPair === "USD/TZS");
-
-  const avgRent =
-    rentPrices.reduce((sum, r) => sum + r.monthlyRent, 0) / rentPrices.length;
-  const avgRentPrev =
-    rentPrices.reduce((sum, r) => sum + r.previousRent, 0) / rentPrices.length;
-
-  const avgDrug =
-    drugPrices.reduce((sum, d) => sum + (d.minPrice + d.maxPrice) / 2, 0) / drugPrices.length;
-
-  const avgSalary =
-    salaries.reduce((sum, s) => sum + s.avgSalary, 0) / salaries.length;
 
   return [
     {
@@ -53,32 +38,42 @@ function buildSummaries(
     },
     {
       label: "dashboard.exchangeRate",
-      value: usd ? `${formatNumber(usd.buyRate)} TZS` : "N/A",
-      change: usd ? computeChangePercent(usd.buyRate, usd.previousBuyRate) : 0,
-      trend: usd ? computeTrend(usd.buyRate, usd.previousBuyRate) : "stable",
+      value:
+        moneySummary?.bot_mean_rate !== null && moneySummary?.bot_mean_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.bot_mean_rate))} TZS`
+          : "N/A",
+      subtitle: moneySummary?.instrument_code ? `BOT ${moneySummary.instrument_code}/TZS` : undefined,
     },
     {
-      label: "dashboard.avgRent",
-      value: `${formatNumber(Math.round(avgRent))} TZS`,
-      change: computeChangePercent(avgRent, avgRentPrev),
-      trend: computeTrend(avgRent, avgRentPrev),
+      label: "money.bestPlaceToBuy",
+      value: moneySummary?.buy_best_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.buy_best_rate !== null && moneySummary?.buy_best_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.buy_best_rate))} TZS`
+          : undefined,
     },
     {
-      label: "dashboard.drugPriceIndex",
-      value: `${formatNumber(Math.round(avgDrug))} TZS`,
-      trend: "stable",
-      change: 0,
+      label: "money.bestPlaceToSell",
+      value: moneySummary?.sell_best_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.sell_best_rate !== null && moneySummary?.sell_best_rate !== undefined
+          ? `${formatNumber(Math.round(moneySummary.sell_best_rate))} TZS`
+          : undefined,
     },
     {
-      label: "dashboard.avgSalary",
-      value: `${formatNumber(Math.round(avgSalary))} TZS`,
-      trend: "stable",
-      change: 0,
+      label: "money.freshestSource",
+      value: moneySummary?.freshest_source_name ?? "N/A",
+      subtitle:
+        moneySummary?.comparison_sources_count !== null
+          && moneySummary?.comparison_sources_count !== undefined
+          ? `${moneySummary.comparison_sources_count} sources`
+          : undefined,
     },
   ];
 }
 
 export async function getDashboardSummaries(): Promise<DomainSummary[]> {
   const fuelSummary = await getEnergyDashboardSummary().catch(() => null);
-  return simulateFetch(buildSummaries(fuelSummary));
+  const moneySummary = await getMoneyDashboardSummary().catch(() => null);
+  return simulateFetch(buildSummaries(fuelSummary, moneySummary));
 }

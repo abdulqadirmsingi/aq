@@ -10,14 +10,14 @@ export const ROUTES = {
 
 export type RouteKey = keyof typeof ROUTES;
 
-export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string }[] = [
+export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string; disabled?: boolean }[] = [
   { key: "dashboard", translationKey: "nav.dashboard", icon: "grid" },
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
-  { key: "energyMonitoring", translationKey: "nav.energyMonitoring", icon: "activity" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
-  { key: "livingCost", translationKey: "nav.livingCost", icon: "home" },
-  { key: "medicine", translationKey: "nav.medicine", icon: "pill" },
-  { key: "hr", translationKey: "nav.hr", icon: "users" },
+  { key: "livingCost", translationKey: "nav.livingCost", icon: "home", disabled: true },
+  { key: "medicine", translationKey: "nav.medicine", icon: "pill", disabled: true },
+  { key: "hr", translationKey: "nav.hr", icon: "users", disabled: true },
+  { key: "energyMonitoring", translationKey: "nav.monitoring", icon: "activity" },
 ];
 
 export const CURRENCY = "TZS";
@@ -41,6 +41,20 @@ export const API_ENDPOINTS = {
       runs: "/energy/fuel/ewura/runs",
     },
   },
+  money: {
+    exchangeRates: {
+      dashboardSummary: "/money/exchange-rates/dashboard-summary",
+      botFilters: "/money/exchange-rates/bot/filters",
+      botHistory: "/money/exchange-rates/bot/history",
+      latestComparison: "/money/exchange-rates/latest-comparison",
+      recommendation: "/money/exchange-rates/recommendation",
+      spreads: "/money/exchange-rates/analytics/spreads",
+      benchmarkGaps: "/money/exchange-rates/analytics/benchmark-gaps",
+      staleness: "/money/exchange-rates/analytics/staleness",
+      bestRates: "/money/exchange-rates/analytics/best-rates",
+      opportunities: "/money/exchange-rates/analytics/opportunities",
+    },
+  },
 } as const;
 
 export const API_DEFAULT_REVALIDATE_SECONDS = 300;
@@ -52,4 +66,10 @@ export const ENERGY_DEFAULTS = {
   runLogsLimit: 8,
   rollupsLimit: 12,
   rollupLevel: "region",
+} as const;
+
+export const MONEY_DEFAULTS = {
+  defaultInstrumentCode: "USD",
+  historyLimit: 12,
+  quickInstrumentLimit: 12,
 } as const;

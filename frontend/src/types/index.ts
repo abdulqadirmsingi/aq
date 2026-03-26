@@ -5,4 +5,5 @@ export interface DomainSummary {
   value: string;
   change?: number;
   trend?: Trend;
+  subtitle?: string;
 }
