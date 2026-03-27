@@ -10,7 +10,7 @@ from app.modules.energy.location_normalization import (
     infer_tanzania_region_name,
     is_country_name,
 )
-from app.modules.energy.repositories.fuel_repository import (
+from app.modules.energy.repositories.fuel_repository_shared import (
     FuelAvailableMonthRecord,
     FuelLatestPriceRecord,
     FuelLatestSummaryRecord,
