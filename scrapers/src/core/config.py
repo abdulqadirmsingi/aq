@@ -22,10 +22,11 @@ class ScraperSettings(BaseSettings):
         description="Bank of Tanzania daily exchange-rates table page.",
     )
     http_timeout_seconds: float = Field(
-        default=45.0,
+        default=120.0,
         ge=1.0,
         le=300.0,
-        description="HTTP client timeout for page fetches",
+        validation_alias=AliasChoices("HTTP_TIMEOUT_SECONDS", "SCRAPER_HTTP_TIMEOUT_SECONDS"),
+        description="HTTP client timeout for listing and document fetches",
     )
     user_agent: str = Field(
         default="AQ-DataIntelligenceHub/1.0 (research; contact: admin@local)",
