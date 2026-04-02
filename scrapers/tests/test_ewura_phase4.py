@@ -6,6 +6,8 @@ import importlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import httpx
+
 from src.core.db_url import sync_database_url
 from src.domains.energy.ewura.models import EwuraParseOutcome, FilteredDocumentRef
 from src.domains.energy.fuel_scraper import EwuraFuelScraper
@@ -31,6 +33,19 @@ def test_celery_registers_ewura_task() -> None:
     from src.workers.celery_app import app
 
     assert "scrapers.run_ewura_fuel" in app.tasks
+
+
+def test_celery_ewura_task_retries_transient_http_failures() -> None:
+    importlib.import_module("src.workers.tasks")
+    from src.workers.tasks import run_ewura_fuel_scraper
+
+    assert run_ewura_fuel_scraper.autoretry_for == (
+        httpx.TimeoutException,
+        httpx.TransportError,
+    )
+    assert run_ewura_fuel_scraper.retry_backoff == 900
+    assert run_ewura_fuel_scraper.retry_backoff_max == 21_600
+    assert run_ewura_fuel_scraper.retry_jitter is True
 
 
 def test_ingest_skips_known_url_when_store_says_so() -> None:

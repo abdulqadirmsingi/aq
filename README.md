@@ -99,6 +99,8 @@ With **Docker Compose** (this repo):
 
 The default Beat schedule (in `scrapers/src/workers/celery_app.py`) runs EWURA **monthly** (1st of the month, 07:00 UTC). Change the `crontab` there if you need a different cadence.
 
+The EWURA Celery task now auto-retries transient network failures such as `httpx` timeouts with exponential backoff, so a brief EWURA outage on the 1st does not automatically cost the whole month's ingest. You can also raise the scraper HTTP timeout with `HTTP_TIMEOUT_SECONDS` in `scrapers/.env` or your production env file.
+
 ### Option B — Manually (one-off, no Celery)
 
 From the `scrapers` directory, with `DATABASE_URL` set so rows can be written:
