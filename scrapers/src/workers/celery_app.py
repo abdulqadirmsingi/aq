@@ -42,6 +42,11 @@ app.conf.beat_schedule = {
         "task": "scrapers.run_nmb_daily_exchange_rates",
         "schedule": crontab(hour=22, minute=35),
     },
+    "itrust-dse-stocks-daily": {
+        "task": "scrapers.run_itrust_dse_stocks",
+        # 13:00 UTC = ~16:00 EAT, after DSE closes at 15:00 EAT
+        "schedule": crontab(hour=13, minute=0),
+    },
 }
 
 
