@@ -7,6 +7,7 @@ import httpx
 from src.domains.energy.fuel_scraper import EwuraFuelScraper
 from src.domains.money.bot_exchange_rate_scraper import BotExchangeRateScraper
 from src.domains.money.crdb_exchange_rate_scraper import CrdbExchangeRateScraper
+from src.domains.money.itrust_stock_scraper import ItrustStockScraper
 from src.domains.money.nmb_exchange_rate_scraper import NmbExchangeRateScraper
 from src.workers.celery_app import app
 
@@ -54,6 +55,23 @@ def run_crdb_exchange_rate_scraper() -> dict[str, int | str | None]:
 @app.task(name="scrapers.run_nmb_daily_exchange_rates")
 def run_nmb_exchange_rate_scraper() -> dict[str, int | str | None]:
     scraper = NmbExchangeRateScraper()
+    try:
+        return scraper.run()
+    finally:
+        scraper.close()
+
+
+@app.task(
+    name="scrapers.run_itrust_dse_stocks",
+    autoretry_for=(httpx.TimeoutException, httpx.TransportError),
+    retry_backoff=60,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    max_retries=3,
+)
+def run_itrust_stock_scraper() -> dict[str, int | str | None]:
+    """Fetch the iTrust DSE market-summary API and persist daily OHLCV records."""
+    scraper = ItrustStockScraper()
     try:
         return scraper.run()
     finally:

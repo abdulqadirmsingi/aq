@@ -58,6 +58,17 @@ EXCHANGE_RATE_SOURCES: tuple[ExchangeRateSourceSeed, ...] = (
     ),
 )
 
+ITRUST_DSE_SOURCE = ExchangeRateSourceSeed(
+    slug="itrust_dse",
+    name="iTrust DSE Market Summary",
+    source_type="private",
+    description="Daily DSE stock OHLCV data aggregated and published by iTrust Finance.",
+    url="https://itrust.co.tz/today-market",
+    reliability_score=Decimal("0.880"),
+)
+
+STOCK_METRIC_SLUG = "dse_close_price"
+
 EXCHANGE_RATE_METRICS: tuple[ExchangeRateMetricSeed, ...] = (
     ExchangeRateMetricSeed(
         slug="fx_buy_rate",
