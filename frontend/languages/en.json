@@ -45,6 +45,7 @@
     "energy": "Energy",
     "monitoring": "Monitoring",
     "money": "Money",
+    "dse": "DSE Stocks",
     "livingCost": "Living Cost",
     "medicine": "Medicine",
     "hr": "Human Resources"
@@ -233,6 +234,29 @@
     "available": "Available",
     "limited": "Limited",
     "scarce": "Scarce"
+  },
+  "dse": {
+    "title": "DSE Stock Market",
+    "subtitle": "Daily OHLCV prices for all equities and ETFs listed on the Dar es Salaam Stock Exchange",
+    "symbol": "Symbol",
+    "close": "Close (TZS)",
+    "open": "Open (TZS)",
+    "turnover": "Turnover",
+    "exchange": "Exchange",
+    "source": "Data Source",
+    "tradeDate": "Trade Date",
+    "topGainer": "Top Gainer",
+    "topLoser": "Top Loser",
+    "mostTraded": "Most Traded",
+    "totalTurnover": "Total Turnover",
+    "gainers": "Gainers",
+    "losers": "Losers",
+    "unchanged": "Unchanged",
+    "totalSymbols": "Total Symbols",
+    "marketSummary": "Market Summary",
+    "marketSummaryDescription": "All DSE-listed stocks and ETFs for trade date {date}",
+    "marketSummaryDescriptionFallback": "Latest available trading data for all DSE-listed stocks and ETFs",
+    "paginationSummary": "Showing {start}–{end} of {total}"
   },
   "hr": {
     "title": "Human Resources",

@@ -45,6 +45,7 @@
     "energy": "Nishati",
     "monitoring": "Ufuatiliaji",
     "money": "Fedha",
+    "dse": "Hisa DSE",
     "livingCost": "Gharama za Maisha",
     "medicine": "Dawa",
     "hr": "Rasilimali Watu"
@@ -233,6 +234,29 @@
     "available": "Inapatikana",
     "limited": "Kidogo",
     "scarce": "Adimu"
+  },
+  "dse": {
+    "title": "Soko la Hisa DSE",
+    "subtitle": "Bei za kila siku OHLCV kwa hisa na ETF zote zilizoorodheshwa kwenye Soko la Hisa la Dar es Salaam",
+    "symbol": "Alama",
+    "close": "Kufunga (TZS)",
+    "open": "Kufungua (TZS)",
+    "turnover": "Mzunguko wa Biashara",
+    "exchange": "Soko",
+    "source": "Chanzo cha Data",
+    "tradeDate": "Tarehe ya Biashara",
+    "topGainer": "Mpanda Zaidi",
+    "topLoser": "Mshuka Zaidi",
+    "mostTraded": "Iliyobinafsishwa Zaidi",
+    "totalTurnover": "Jumla ya Mzunguko",
+    "gainers": "Wapanda",
+    "losers": "Washuka",
+    "unchanged": "Haijabadilika",
+    "totalSymbols": "Jumla ya Alama",
+    "marketSummary": "Muhtasari wa Soko",
+    "marketSummaryDescription": "Hisa na ETF zote za DSE kwa tarehe ya biashara {date}",
+    "marketSummaryDescriptionFallback": "Data ya biashara ya hivi karibuni kwa hisa na ETF zote za DSE",
+    "paginationSummary": "Inaonyesha {start}–{end} kati ya {total}"
   },
   "hr": {
     "title": "Rasilimali Watu",

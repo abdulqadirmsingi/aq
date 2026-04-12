@@ -200,11 +200,15 @@ class DataPoint(Base):
         back_populates="data_point"
     )
     salary_detail: Mapped[SalaryDetail | None] = relationship(back_populates="data_point")
+    stock_price_detail: Mapped[StockPriceDetail | None] = relationship(
+        back_populates="data_point"
+    )
 
 
 from app.modules.energy.models.fuel import EnergyDetail
 from app.modules.hr.models.salary import SalaryDetail
 from app.modules.money.models.exchange_rate import ExchangeRateDetail
+from app.modules.money.models.stock import StockPriceDetail
 
 from .ingestion import IngestionLog, ScraperRun
 from .reference import Location, Metric, Source

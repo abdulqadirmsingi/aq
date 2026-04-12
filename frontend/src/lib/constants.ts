@@ -3,6 +3,7 @@ export const ROUTES = {
   energy: "/energy",
   energyMonitoring: "/energy/monitoring",
   money: "/money",
+  dse: "/dse",
   livingCost: "/living-cost",
   medicine: "/medicine",
   hr: "/hr",
@@ -14,6 +15,7 @@ export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string; d
   { key: "dashboard", translationKey: "nav.dashboard", icon: "grid" },
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
+  { key: "dse", translationKey: "nav.dse", icon: "trending-up" },
   { key: "livingCost", translationKey: "nav.livingCost", icon: "home", disabled: true },
   { key: "medicine", translationKey: "nav.medicine", icon: "pill", disabled: true },
   { key: "hr", translationKey: "nav.hr", icon: "users", disabled: true },
@@ -53,6 +55,11 @@ export const API_ENDPOINTS = {
       insights: "/energy/fuel/ewura/insights",
       runs: "/energy/fuel/ewura/runs",
     },
+  },
+  dse: {
+    dashboardSummary: "/money/stocks/dse/dashboard-summary",
+    latest: "/money/stocks/dse/latest",
+    history: "/money/stocks/dse/history",
   },
   money: {
     exchangeRates: {
