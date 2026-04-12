@@ -62,7 +62,11 @@
     "exchangeRate": "Kiwango cha USD/TZS",
     "avgRent": "Wastani wa Kodi (Dar)",
     "drugPriceIndex": "Fahirisi ya Bei ya Dawa",
-    "avgSalary": "Wastani wa Mshahara"
+    "avgSalary": "Wastani wa Mshahara",
+    "dseTopGainer": "Mpanda Zaidi DSE",
+    "dseTopLoser": "Mshuka Zaidi DSE",
+    "dseMostTraded": "Iliyobinafsishwa Zaidi DSE",
+    "dseTotalTurnover": "Jumla ya Mzunguko DSE"
   },
   "energy": {
     "title": "Nishati",
