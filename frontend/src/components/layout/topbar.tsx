@@ -23,9 +23,7 @@ export function Topbar() {
           <h1 className="text-xl font-black tracking-tight text-neutral-900 uppercase sm:text-2xl">
             System Overview
           </h1>
-          <p className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase sm:text-xs">
-            Live Intelligence Deck
-          </p>
+          
         </div>
       </div>
       <div className="flex items-center gap-4">

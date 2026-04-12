@@ -4,6 +4,7 @@ from app.db.models.reference import DataCategory, Location, Metric, Source
 from app.modules.energy.models.fuel import EnergyDetail
 from app.modules.hr.models.salary import SalaryDetail
 from app.modules.money.models.exchange_rate import ExchangeRateDetail
+from app.modules.money.models.stock import StockPriceDetail
 
 __all__ = [
     "DataCategory",
@@ -16,4 +17,5 @@ __all__ = [
     "SalaryDetail",
     "ScraperRun",
     "Source",
+    "StockPriceDetail",
 ]
