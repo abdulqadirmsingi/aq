@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+from pydantic import BaseModel, model_validator
+
 
 def _fmt_price(value: Decimal | None) -> str:
     if value is None:
@@ -35,15 +37,12 @@ def _fmt_change(value: Decimal | None) -> tuple[str, str]:
     return f"{v:.2f}%", "unchanged"
 
 
-from pydantic import BaseModel, model_validator  # noqa: E402
-
-
 class DseStockRead(BaseModel):
     symbol: str
     exchange_code: str
     trade_date: date
 
-    # Raw numeric values (float — no Decimal serialization issues)
+    # Raw numeric values (float — serializes correctly as JSON numbers)
     close_price: float
     open_price: float | None
     high_price: float | None
@@ -57,16 +56,14 @@ class DseStockRead(BaseModel):
     high_price_display: str = ""
     low_price_display: str = ""
     change_pct_display: str = ""
-    change_direction: str = "unchanged"   # "up" | "down" | "unchanged"
+    change_direction: str = "unchanged"  # "up" | "down" | "unchanged"
     turnover_display: str = ""
 
     model_config = {"from_attributes": True}
 
     @model_validator(mode="after")
     def _compute_display(self) -> "DseStockRead":
-        self.close_price_display = _fmt_price(
-            Decimal(str(self.close_price)) if self.close_price is not None else None
-        )
+        self.close_price_display = _fmt_price(Decimal(str(self.close_price)))
         self.open_price_display = _fmt_price(
             Decimal(str(self.open_price)) if self.open_price is not None else None
         )
@@ -88,7 +85,7 @@ class DseDashboardSummaryRead(BaseModel):
     trade_date: date | None
     total_symbols: int
     total_turnover: float
-    total_turnover_display: str   # e.g. "3.5B TZS"
+    total_turnover_display: str  # e.g. "3.5B TZS"
     top_gainer: DseStockRead | None
     top_loser: DseStockRead | None
     most_traded: DseStockRead | None
