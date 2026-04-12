@@ -163,9 +163,8 @@ class StockRepository:
                 else:
                     unchanged += 1
 
-            if rec.turnover_tzs and rec.turnover_tzs > 0:
-                if most_traded is None or rec.turnover_tzs > (most_traded.turnover_tzs or Decimal("0")):
-                    most_traded = rec
+            if rec.turnover_tzs and rec.turnover_tzs > 0 and (most_traded is None or rec.turnover_tzs > (most_traded.turnover_tzs or Decimal("0"))):
+                most_traded = rec
 
         return {
             "trade_date": latest_date,

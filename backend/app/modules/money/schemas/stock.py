@@ -62,7 +62,7 @@ class DseStockRead(BaseModel):
     model_config = {"from_attributes": True}
 
     @model_validator(mode="after")
-    def _compute_display(self) -> "DseStockRead":
+    def _compute_display(self) -> DseStockRead:
         self.close_price_display = _fmt_price(Decimal(str(self.close_price)))
         self.open_price_display = _fmt_price(
             Decimal(str(self.open_price)) if self.open_price is not None else None
