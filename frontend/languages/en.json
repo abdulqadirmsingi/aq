@@ -62,7 +62,11 @@
     "exchangeRate": "USD/TZS Rate",
     "avgRent": "Avg Rent (Dar)",
     "drugPriceIndex": "Drug Price Index",
-    "avgSalary": "Avg Salary"
+    "avgSalary": "Avg Salary",
+    "dseTopGainer": "DSE Top Gainer",
+    "dseTopLoser": "DSE Top Loser",
+    "dseMostTraded": "DSE Most Traded",
+    "dseTotalTurnover": "DSE Total Turnover"
   },
   "energy": {
     "title": "Energy",

@@ -32,7 +32,7 @@ jobs:
             git checkout main
             git pull --ff-only origin main
             docker compose --env-file .env.prod -f docker-compose.prod.yml up -d db redis
-            docker compose --env-file .env.prod -f docker-compose.prod.yml build backend celery_worker celery_beat
+            docker compose --env-file .env.prod -f docker-compose.prod.yml --profile ops build backend celery_worker celery_beat migrate
             docker compose --env-file .env.prod -f docker-compose.prod.yml --profile ops run --rm migrate
             docker compose --env-file .env.prod -f docker-compose.prod.yml up -d backend celery_worker celery_beat
             curl --fail --silent https://api.abdulqadirmsingi.com/health
