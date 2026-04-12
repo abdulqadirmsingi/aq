@@ -10,23 +10,29 @@ interface DseMarketTableProps {
   tradeDate: string | null;
 }
 
-function formatPrice(value: number | null | undefined): string {
+function n(value: number | string | null | undefined): number {
+  return Number(value ?? 0);
+}
+
+function formatPrice(value: number | string | null | undefined): string {
   if (value === null || value === undefined) return "—";
-  return formatNumber(Math.round(value));
+  return formatNumber(Math.round(n(value)));
 }
 
-function formatTurnover(value: number | null | undefined): string {
-  if (!value || value === 0) return "—";
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  return formatNumber(Math.round(value));
+function formatTurnover(value: number | string | null | undefined): string {
+  const v = n(value);
+  if (!v) return "—";
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  return formatNumber(Math.round(v));
 }
 
-function changeBadge(change: number | null): React.ReactNode {
+function changeBadge(change: number | string | null): React.ReactNode {
   if (change === null || change === undefined) return <Badge>—</Badge>;
-  if (change > 0) return <Badge variant="success">+{change.toFixed(2)}%</Badge>;
-  if (change < 0) return <Badge variant="danger">{change.toFixed(2)}%</Badge>;
-  return <Badge>{change.toFixed(2)}%</Badge>;
+  const v = n(change);
+  if (v > 0) return <Badge variant="success">+{v.toFixed(2)}%</Badge>;
+  if (v < 0) return <Badge variant="danger">{v.toFixed(2)}%</Badge>;
+  return <Badge>{v.toFixed(2)}%</Badge>;
 }
 
 export async function DseMarketTable({ items, tradeDate }: DseMarketTableProps) {

@@ -7,15 +7,20 @@ interface DseSummaryCardsProps {
   summary: DseDashboardSummaryRead;
 }
 
-function formatPrice(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "N/A";
-  return `${formatNumber(Math.round(value))} TZS`;
+function n(value: number | string | null | undefined): number {
+  return Number(value ?? 0);
 }
 
-function formatTurnover(value: number): string {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B TZS`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M TZS`;
-  return `${formatNumber(Math.round(value))} TZS`;
+function formatPrice(value: number | string | null | undefined): string {
+  if (value === null || value === undefined) return "N/A";
+  return `${formatNumber(Math.round(n(value)))} TZS`;
+}
+
+function formatTurnover(value: number | string | null | undefined): string {
+  const v = n(value);
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B TZS`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M TZS`;
+  return `${formatNumber(Math.round(v))} TZS`;
 }
 
 export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
@@ -27,7 +32,7 @@ export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
       title: t("dse.topGainer"),
       value: summary.top_gainer?.symbol ?? "N/A",
       subtitle: summary.top_gainer
-        ? `+${summary.top_gainer.change_pct?.toFixed(2) ?? "0"}% · ${formatPrice(summary.top_gainer.close_price)}`
+        ? `+${n(summary.top_gainer.change_pct).toFixed(2)}% · ${formatPrice(summary.top_gainer.close_price)}`
         : t("common.noData"),
       variant: "featured" as const,
     },
@@ -36,7 +41,7 @@ export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
       title: t("dse.topLoser"),
       value: summary.top_loser?.symbol ?? "N/A",
       subtitle: summary.top_loser
-        ? `${summary.top_loser.change_pct?.toFixed(2) ?? "0"}% · ${formatPrice(summary.top_loser.close_price)}`
+        ? `${n(summary.top_loser.change_pct).toFixed(2)}% · ${formatPrice(summary.top_loser.close_price)}`
         : t("common.noData"),
     },
     {
