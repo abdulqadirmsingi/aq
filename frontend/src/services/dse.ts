@@ -13,7 +13,7 @@ export async function getDseLatestStocks(options?: {
 }): Promise<DseStockPage> {
   return apiFetch<DseStockPage>(API_ENDPOINTS.dse.latest, {
     query: {
-      limit: options?.limit ?? 100,
+      limit: options?.limit ?? 20,
       offset: options?.offset ?? 0,
       symbol: options?.symbol,
     },
@@ -27,19 +27,19 @@ export async function getDseStockHistory(
   return apiFetch<DseStockPage>(API_ENDPOINTS.dse.history, {
     query: {
       symbol,
-      limit: options?.limit ?? 30,
+      limit: options?.limit ?? 20,
       offset: options?.offset ?? 0,
     },
   });
 }
 
-export async function getDsePageData(): Promise<{
+export async function getDsePageData(offset = 0): Promise<{
   summary: DseDashboardSummaryRead;
   latest: DseStockPage;
 }> {
   const [summary, latest] = await Promise.all([
     getDseDashboardSummary().catch(() => emptySummary()),
-    getDseLatestStocks().catch(() => emptyPage()),
+    getDseLatestStocks({ offset }).catch(() => emptyPage()),
   ]);
   return { summary, latest };
 }
@@ -49,6 +49,7 @@ function emptySummary(): DseDashboardSummaryRead {
     trade_date: null,
     total_symbols: 0,
     total_turnover: 0,
+    total_turnover_display: "—",
     top_gainer: null,
     top_loser: null,
     most_traded: null,
@@ -59,5 +60,5 @@ function emptySummary(): DseDashboardSummaryRead {
 }
 
 function emptyPage(): DseStockPage {
-  return { items: [], meta: { limit: 100, offset: 0, total: 0, has_next: false } };
+  return { items: [], meta: { limit: 20, offset: 0, total: 0, has_next: false } };
 }

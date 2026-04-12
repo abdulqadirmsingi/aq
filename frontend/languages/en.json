@@ -255,7 +255,8 @@
     "totalSymbols": "Total Symbols",
     "marketSummary": "Market Summary",
     "marketSummaryDescription": "All DSE-listed stocks and ETFs for trade date {date}",
-    "marketSummaryDescriptionFallback": "Latest available trading data for all DSE-listed stocks and ETFs"
+    "marketSummaryDescriptionFallback": "Latest available trading data for all DSE-listed stocks and ETFs",
+    "paginationSummary": "Showing {start}–{end} of {total}"
   },
   "hr": {
     "title": "Human Resources",

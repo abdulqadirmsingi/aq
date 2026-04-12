@@ -15,6 +15,8 @@ from app.modules.money.services.stock_service import StockService
 
 router = APIRouter()
 
+_PAGE_SIZE = 20
+
 
 def _stock_service(db: AsyncSession) -> StockService:
     return StockService(StockRepository(db))
@@ -23,7 +25,7 @@ def _stock_service(db: AsyncSession) -> StockService:
 @router.get("/stocks/dse/latest", response_model=Page[DseStockRead])
 async def get_latest_dse_stocks(
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    limit: Annotated[int, Query(ge=1, le=100)] = _PAGE_SIZE,
     offset: Annotated[int, Query(ge=0)] = 0,
     symbol: Annotated[str | None, Query(max_length=20)] = None,
 ) -> Page[DseStockRead]:
@@ -38,7 +40,7 @@ async def get_latest_dse_stocks(
 async def get_dse_stock_history(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     symbol: Annotated[str, Query(min_length=1, max_length=20)],
-    limit: Annotated[int, Query(ge=1, le=200)] = 30,
+    limit: Annotated[int, Query(ge=1, le=100)] = _PAGE_SIZE,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[DseStockRead]:
     return await _stock_service(db).list_history(

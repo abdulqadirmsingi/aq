@@ -5,16 +5,18 @@ import { DseStatsBar } from "./components/dse-stats-bar";
 
 interface DseFeatureProps {
   data: DsePageData;
+  offset: number;
 }
 
-export function DseFeature({ data }: DseFeatureProps) {
+export function DseFeature({ data, offset }: DseFeatureProps) {
   return (
     <div className="space-y-8">
       <DseSummaryCards summary={data.summary} />
       <DseStatsBar summary={data.summary} />
       <DseMarketTable
-        items={data.latest.items}
+        page={data.latest}
         tradeDate={data.summary.trade_date}
+        currentOffset={offset}
       />
     </div>
   );

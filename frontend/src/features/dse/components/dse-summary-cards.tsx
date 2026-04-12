@@ -1,26 +1,9 @@
 import { DataCard } from "@/components/ui/data-card";
-import { formatNumber } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
 import type { DseDashboardSummaryRead } from "@/types/api";
 
 interface DseSummaryCardsProps {
   summary: DseDashboardSummaryRead;
-}
-
-function n(value: number | string | null | undefined): number {
-  return Number(value ?? 0);
-}
-
-function formatPrice(value: number | string | null | undefined): string {
-  if (value === null || value === undefined) return "N/A";
-  return `${formatNumber(Math.round(n(value)))} TZS`;
-}
-
-function formatTurnover(value: number | string | null | undefined): string {
-  const v = n(value);
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B TZS`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M TZS`;
-  return `${formatNumber(Math.round(v))} TZS`;
 }
 
 export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
@@ -32,7 +15,7 @@ export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
       title: t("dse.topGainer"),
       value: summary.top_gainer?.symbol ?? "N/A",
       subtitle: summary.top_gainer
-        ? `+${n(summary.top_gainer.change_pct).toFixed(2)}% · ${formatPrice(summary.top_gainer.close_price)}`
+        ? `${summary.top_gainer.change_pct_display} · ${summary.top_gainer.close_price_display} TZS`
         : t("common.noData"),
       variant: "featured" as const,
     },
@@ -41,21 +24,21 @@ export async function DseSummaryCards({ summary }: DseSummaryCardsProps) {
       title: t("dse.topLoser"),
       value: summary.top_loser?.symbol ?? "N/A",
       subtitle: summary.top_loser
-        ? `${n(summary.top_loser.change_pct).toFixed(2)}% · ${formatPrice(summary.top_loser.close_price)}`
+        ? `${summary.top_loser.change_pct_display} · ${summary.top_loser.close_price_display} TZS`
         : t("common.noData"),
     },
     {
       key: "most-traded",
       title: t("dse.mostTraded"),
       value: summary.most_traded?.symbol ?? "N/A",
-      subtitle: summary.most_traded?.turnover_tzs
-        ? formatTurnover(summary.most_traded.turnover_tzs)
+      subtitle: summary.most_traded
+        ? summary.most_traded.turnover_display
         : t("common.noData"),
     },
     {
       key: "total-turnover",
       title: t("dse.totalTurnover"),
-      value: formatTurnover(summary.total_turnover),
+      value: summary.total_turnover_display,
       subtitle: summary.trade_date
         ? `${t("dse.tradeDate")}: ${summary.trade_date}`
         : t("common.noData"),

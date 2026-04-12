@@ -1,42 +1,35 @@
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { SectionHeader } from "@/components/ui/section-header";
-import { formatNumber } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
-import type { DseStockRead } from "@/types/api";
+import type { DseStockRead, DseStockPage } from "@/types/api";
 
 interface DseMarketTableProps {
-  items: DseStockRead[];
+  page: DseStockPage;
   tradeDate: string | null;
+  currentOffset: number;
 }
 
-function n(value: number | string | null | undefined): number {
-  return Number(value ?? 0);
+function changeBadge(item: DseStockRead): React.ReactNode {
+  if (item.change_direction === "up") {
+    return <Badge variant="success">{item.change_pct_display}</Badge>;
+  }
+  if (item.change_direction === "down") {
+    return <Badge variant="danger">{item.change_pct_display}</Badge>;
+  }
+  return <Badge>{item.change_pct_display}</Badge>;
 }
 
-function formatPrice(value: number | string | null | undefined): string {
-  if (value === null || value === undefined) return "—";
-  return formatNumber(Math.round(n(value)));
-}
-
-function formatTurnover(value: number | string | null | undefined): string {
-  const v = n(value);
-  if (!v) return "—";
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  return formatNumber(Math.round(v));
-}
-
-function changeBadge(change: number | string | null): React.ReactNode {
-  if (change === null || change === undefined) return <Badge>—</Badge>;
-  const v = n(change);
-  if (v > 0) return <Badge variant="success">+{v.toFixed(2)}%</Badge>;
-  if (v < 0) return <Badge variant="danger">{v.toFixed(2)}%</Badge>;
-  return <Badge>{v.toFixed(2)}%</Badge>;
-}
-
-export async function DseMarketTable({ items, tradeDate }: DseMarketTableProps) {
+export async function DseMarketTable({ page, tradeDate, currentOffset }: DseMarketTableProps) {
   const t = await getTranslations();
+
+  const { items, meta } = page;
+  const prevOffset = Math.max(0, currentOffset - meta.limit);
+  const nextOffset = currentOffset + meta.limit;
+  const hasPrev = currentOffset > 0;
+  const hasNext = meta.has_next;
+  const start = meta.total === 0 ? 0 : currentOffset + 1;
+  const end = Math.min(currentOffset + items.length, meta.total);
 
   const columns = [
     {
@@ -49,36 +42,32 @@ export async function DseMarketTable({ items, tradeDate }: DseMarketTableProps) 
     {
       key: "close",
       header: t("dse.close"),
-      render: (item: DseStockRead) => formatPrice(item.close_price),
+      render: (item: DseStockRead) => item.close_price_display,
     },
     {
       key: "open",
       header: t("dse.open"),
-      render: (item: DseStockRead) => formatPrice(item.open_price),
+      render: (item: DseStockRead) => item.open_price_display,
     },
     {
       key: "high",
       header: t("common.high"),
-      render: (item: DseStockRead) => formatPrice(item.high_price),
+      render: (item: DseStockRead) => item.high_price_display,
     },
     {
       key: "low",
       header: t("common.low"),
-      render: (item: DseStockRead) => formatPrice(item.low_price),
+      render: (item: DseStockRead) => item.low_price_display,
     },
     {
       key: "change",
       header: t("common.change"),
-      render: (item: DseStockRead) => changeBadge(item.change_pct),
+      render: (item: DseStockRead) => changeBadge(item),
     },
     {
       key: "turnover",
       header: t("dse.turnover"),
-      render: (item: DseStockRead) => (
-        <span className={!item.turnover_tzs || item.turnover_tzs === 0 ? "text-neutral-400" : ""}>
-          {formatTurnover(item.turnover_tzs)}
-        </span>
-      ),
+      render: (item: DseStockRead) => item.turnover_display,
     },
   ];
 
@@ -98,6 +87,40 @@ export async function DseMarketTable({ items, tradeDate }: DseMarketTableProps) 
         keyExtractor={(item) => `${item.symbol}:${item.trade_date}`}
         emptyMessage={t("common.noData")}
       />
+
+      {meta.total > meta.limit && (
+        <div className="mt-4 flex items-center justify-between border-[3px] border-neutral-950 bg-white px-6 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <span className="text-xs font-bold text-neutral-500">
+            {t("dse.paginationSummary", { start, end, total: meta.total })}
+          </span>
+          <div className="flex gap-2">
+            {hasPrev ? (
+              <a
+                href={`?offset=${prevOffset}`}
+                className="border-[2px] border-neutral-950 bg-white px-4 py-1.5 text-xs font-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                {t("common.previous")}
+              </a>
+            ) : (
+              <span className="border-[2px] border-neutral-300 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-neutral-300">
+                {t("common.previous")}
+              </span>
+            )}
+            {hasNext ? (
+              <a
+                href={`?offset=${nextOffset}`}
+                className="border-[2px] border-neutral-950 bg-neutral-950 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                {t("common.next")}
+              </a>
+            ) : (
+              <span className="border-[2px] border-neutral-300 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-neutral-300">
+                {t("common.next")}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

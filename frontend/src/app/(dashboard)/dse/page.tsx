@@ -11,7 +11,17 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["DSE", "Tanzania stock market", "Dar es Salaam Stock Exchange", "TZS stocks"],
 });
 
-export default async function DsePage() {
-  const data = await getDsePageData();
-  return <DseFeature data={data} />;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function readOffset(params: Record<string, string | string[] | undefined>): number {
+  const raw = Array.isArray(params.offset) ? params.offset[0] : params.offset;
+  const parsed = Number.parseInt(raw ?? "0", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+export default async function DsePage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const offset = readOffset(params);
+  const data = await getDsePageData(offset);
+  return <DseFeature data={data} offset={offset} />;
 }

@@ -255,7 +255,8 @@
     "totalSymbols": "Jumla ya Alama",
     "marketSummary": "Muhtasari wa Soko",
     "marketSummaryDescription": "Hisa na ETF zote za DSE kwa tarehe ya biashara {date}",
-    "marketSummaryDescriptionFallback": "Data ya biashara ya hivi karibuni kwa hisa na ETF zote za DSE"
+    "marketSummaryDescriptionFallback": "Data ya biashara ya hivi karibuni kwa hisa na ETF zote za DSE",
+    "paginationSummary": "Inaonyesha {start}–{end} kati ya {total}"
   },
   "hr": {
     "title": "Rasilimali Watu",
