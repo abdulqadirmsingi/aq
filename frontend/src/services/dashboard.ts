@@ -1,6 +1,8 @@
 import { computeChangePercent, computeTrend, formatNumber } from "@/lib/utils";
 import type { DomainSummary } from "@/types";
+import type { DseDashboardSummaryRead } from "@/types/api";
 import { simulateFetch } from "./api-client";
+import { getDseDashboardSummary } from "./dse";
 import { getEnergyDashboardSummary } from "./energy";
 import { getMoneyDashboardSummary } from "./money";
 
@@ -21,9 +23,42 @@ function getFuelSummaryMetrics(summary: Awaited<ReturnType<typeof getEnergyDashb
   return { currentAverage, previousAverage };
 }
 
+function buildDseSummaries(dse: DseDashboardSummaryRead | null): DomainSummary[] {
+  if (!dse) return [];
+
+  const directionToTrend = (d: "up" | "down" | "unchanged") =>
+    d === "up" ? "up" : d === "down" ? "down" : ("stable" as const);
+
+  return [
+    {
+      label: "dashboard.dseTopGainer",
+      value: dse.top_gainer?.symbol ?? "—",
+      subtitle: dse.top_gainer?.change_pct_display ?? undefined,
+      trend: dse.top_gainer ? directionToTrend(dse.top_gainer.change_direction) : undefined,
+    },
+    {
+      label: "dashboard.dseTopLoser",
+      value: dse.top_loser?.symbol ?? "—",
+      subtitle: dse.top_loser?.change_pct_display ?? undefined,
+      trend: dse.top_loser ? directionToTrend(dse.top_loser.change_direction) : undefined,
+    },
+    {
+      label: "dashboard.dseMostTraded",
+      value: dse.most_traded?.symbol ?? "—",
+      subtitle: dse.most_traded?.turnover_display ?? undefined,
+    },
+    {
+      label: "dashboard.dseTotalTurnover",
+      value: dse.total_turnover_display,
+      subtitle: dse.trade_date ?? undefined,
+    },
+  ];
+}
+
 function buildSummaries(
   fuelSummary: Awaited<ReturnType<typeof getEnergyDashboardSummary>> | null,
   moneySummary: Awaited<ReturnType<typeof getMoneyDashboardSummary>> | null,
+  dseSummary: DseDashboardSummaryRead | null,
 ): DomainSummary[] {
   const { currentAverage, previousAverage } = fuelSummary
     ? getFuelSummaryMetrics(fuelSummary)
@@ -69,11 +104,15 @@ function buildSummaries(
           ? `${moneySummary.comparison_sources_count} sources`
           : undefined,
     },
+    ...buildDseSummaries(dseSummary),
   ];
 }
 
 export async function getDashboardSummaries(): Promise<DomainSummary[]> {
-  const fuelSummary = await getEnergyDashboardSummary().catch(() => null);
-  const moneySummary = await getMoneyDashboardSummary().catch(() => null);
-  return simulateFetch(buildSummaries(fuelSummary, moneySummary));
+  const [fuelSummary, moneySummary, dseSummary] = await Promise.all([
+    getEnergyDashboardSummary().catch(() => null),
+    getMoneyDashboardSummary().catch(() => null),
+    getDseDashboardSummary().catch(() => null),
+  ]);
+  return simulateFetch(buildSummaries(fuelSummary, moneySummary, dseSummary));
 }
