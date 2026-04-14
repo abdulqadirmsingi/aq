@@ -11,7 +11,7 @@ export function Navbar() {
       
       <div className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest uppercase text-neutral-600">
         <a href="#data" className="hover:text-neutral-900 transition-colors">Available Data</a>
-        <a href="#roadmap" className="hover:text-neutral-900 transition-colors">Roadmap</a>
+        {/* <a href="#roadmap" className="hover:text-neutral-900 transition-colors">Roadmap</a> */}
       </div>
 
       <Link 
