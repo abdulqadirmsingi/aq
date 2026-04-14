@@ -7,6 +7,13 @@ const DEFAULT_DESCRIPTION =
   "AQ is a multi-sector data intelligence hub for Tanzania, combining historical records, current signals, and actionable insight.";
 const DEFAULT_KEYWORDS = [
   "AQ",
+  "AQ Data Lab",
+  "AQ Data",
+  "AQ Data Dashboard",
+  "AQ Data Intelligence",
+  "AQ Data Intelligence Hub",
+  "AQ Data Intelligence Workspace",
+  "AQ Data Intelligence Workspace",
   "Tanzania data",
   "historical data",
   "data intelligence",
