@@ -9,7 +9,7 @@ export function Hero() {
       />
 
       <div className="relative z-10 flex max-w-5xl flex-col items-center text-center">
-        <h1 className="mb-8 text-6xl font-black tracking-tighter sm:text-8xl lg:text-9xl uppercase leading-[0.95] text-neutral-900">
+        <h1 className="mb-8 text-4xl font-black tracking-tighter sm:text-8xl lg:text-9xl uppercase leading-[0.95] text-neutral-900">
           <span className="block">
             Uncover
           </span>
