@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavIcon } from "./nav-icon";
+import { Logo } from "@/components/ui/logo";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -14,7 +15,7 @@ export function Sidebar() {
   const { isSidebarOpen, closeSidebar } = useUIStore();
 
   function isActive(route: string): boolean {
-    if (route === "/") return pathname === "/";
+    if (route === "/data") return pathname === "/data";
     return pathname.startsWith(route);
   }
 
@@ -50,13 +51,9 @@ export function Sidebar() {
         </button>
 
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-neutral-950 group-hover/sidebar:w-48 group-hover/sidebar:justify-start group-hover/sidebar:px-6 transition-all duration-500 overflow-hidden ring-4 ring-neutral-800">
-          <Link href="/" className="flex items-center gap-3 text-2xl font-black tracking-tighter" onClick={closeSidebar}>
-            {/* Innovative Logo */}
-            <div className="relative flex shrink-0 items-center justify-center">
-               <span className="relative z-10">AQ</span>
-               <div className="absolute -inset-1 rounded-lg bg-neutral-950 opacity-0 group-hover/sidebar:opacity-10 transition-opacity" />
-            </div>
-            <span className="hidden opacity-0 group-hover/sidebar:block group-hover/sidebar:opacity-100 transition-opacity duration-700 text-xs tracking-[0.2em] font-light">INTELLIGENCE</span>
+          <Link href="/data" className="flex items-center gap-3" onClick={closeSidebar}>
+            <Logo className="h-8 w-8 text-neutral-900" accentColor="text-emerald-500" />
+            <span className="hidden opacity-0 group-hover/sidebar:block group-hover/sidebar:opacity-100 transition-opacity duration-700 text-xs tracking-[0.2em] font-black uppercase">INTELLIGENCE</span>
           </Link>
         </div>
 
