@@ -9,15 +9,7 @@ export function Hero() {
       />
 
       <div className="relative z-10 flex max-w-5xl flex-col items-center text-center">
-        <div className="mb-8 inline-flex items-center gap-3 border-2 border-neutral-900 bg-white px-5 py-2.5 text-xs font-bold tracking-[0.2em] uppercase text-neutral-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-          </span>
-          WELCOME TO AQ DATA LAB
-        </div>
-
-        <h1 className="mb-8 text-5xl font-black tracking-tighter sm:text-7xl lg:text-8xl uppercase leading-[0.95] text-neutral-900">
+        <h1 className="mb-8 text-6xl font-black tracking-tighter sm:text-8xl lg:text-9xl uppercase leading-[0.95] text-neutral-900">
           <span className="block">
             Uncover
           </span>
@@ -26,9 +18,9 @@ export function Hero() {
           </span>
         </h1>
 
-        <p className="mb-12 max-w-2xl text-lg font-medium leading-relaxed text-neutral-600 border-2 border-neutral-900 bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <p className="mb-12 max-w-3xl text-xl sm:text-2xl font-medium leading-relaxed text-neutral-600">
           A multi-sector view of Tanzania&apos;s historical records, current signals, and decision-ready intelligence. 
-          We transform raw numbers into actionable insights.
+          We transform raw numbers into <span className="font-bold text-neutral-900">actionable insights</span>.
         </p>
 
         <div className="flex flex-col gap-4 sm:flex-row">

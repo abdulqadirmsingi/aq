@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/logo";
 
 export function Footer() {
   return (
@@ -7,9 +8,7 @@ export function Footer() {
         <div className="mb-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center bg-neutral-900 text-white font-black text-2xl tracking-tighter">
-                AQ
-              </div>
+              <Logo className="h-12 w-12 text-neutral-900" accentColor="text-emerald-500" />
               <span className="text-xl font-bold tracking-widest uppercase">Data Lab</span>
             </div>
             <p className="max-w-md text-base font-medium text-neutral-600 leading-relaxed">
