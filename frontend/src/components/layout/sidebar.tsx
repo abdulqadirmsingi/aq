@@ -14,7 +14,7 @@ export function Sidebar() {
   const { isSidebarOpen, closeSidebar } = useUIStore();
 
   function isActive(route: string): boolean {
-    if (route === "/") return pathname === "/";
+    if (route === "/data") return pathname === "/data";
     return pathname.startsWith(route);
   }
 
@@ -50,7 +50,7 @@ export function Sidebar() {
         </button>
 
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-neutral-950 group-hover/sidebar:w-48 group-hover/sidebar:justify-start group-hover/sidebar:px-6 transition-all duration-500 overflow-hidden ring-4 ring-neutral-800">
-          <Link href="/" className="flex items-center gap-3 text-2xl font-black tracking-tighter" onClick={closeSidebar}>
+          <Link href="/data" className="flex items-center gap-3 text-2xl font-black tracking-tighter" onClick={closeSidebar}>
             {/* Innovative Logo */}
             <div className="relative flex shrink-0 items-center justify-center">
                <span className="relative z-10">AQ</span>
