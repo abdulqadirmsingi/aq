@@ -28,7 +28,7 @@ export function Hero() {
             href="/data" 
             className="group relative inline-flex h-14 items-center justify-center gap-3 border-2 border-neutral-900 bg-neutral-900 px-10 font-bold uppercase tracking-widest text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] transition-all hover:bg-neutral-800 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
           >
-            <span>Explore Dashboard</span>
+            <span>Explore Data</span>
             <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>

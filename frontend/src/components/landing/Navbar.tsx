@@ -18,7 +18,7 @@ export function Navbar() {
         href="/data" 
         className="group relative inline-flex items-center justify-center gap-2 border-2 border-neutral-900 bg-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-neutral-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
       >
-        Enter Dashboard
+        View Data
       </Link>
     </nav>
   );
