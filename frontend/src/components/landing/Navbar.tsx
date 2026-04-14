@@ -5,9 +5,7 @@ import { useState } from "react";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [
-  { href: "#data", label: "Available Data", code: "01" },
-] as const;
+const NAV_LINKS = [{ href: "#data", label: "Available intelligence" }] as const;
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,11 +44,9 @@ export function Navbar() {
               <a
                 key={item.href}
                 href={item.href}
-                className="group flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-neutral-600 transition-colors hover:bg-neutral-900 hover:text-white"
+                className="rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wide text-neutral-600 transition-colors hover:bg-neutral-900 hover:text-white"
               >
-                <span className="tabular-nums text-emerald-600 group-hover:text-emerald-300">{item.code}</span>
-                <span className="hidden lg:inline text-neutral-400 group-hover:text-neutral-500">/</span>
-                <span className="font-sans text-xs font-bold tracking-wide">{item.label}</span>
+                {item.label}
               </a>
             ))}
           </div>
@@ -97,11 +93,10 @@ export function Navbar() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-neutral-700 hover:bg-neutral-900 hover:text-white"
+                  className="rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-neutral-700 hover:bg-neutral-900 hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <span className="tabular-nums text-emerald-600">{item.code}</span>
-                  <span className="font-sans text-xs font-bold tracking-wide">{item.label}</span>
+                  {item.label}
                 </a>
               ))}
             </div>

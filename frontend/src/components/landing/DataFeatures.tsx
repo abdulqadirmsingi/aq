@@ -1,7 +1,10 @@
+import Link from "next/link";
+
 export function DataFeatures() {
   const features = [
     {
       title: "Energy & Fuel Prices",
+      href: "/energy",
       description: "Track historical and real-time fuel prices across regions from EWURA. Analyze trends, regional price differences, and historical extremes to optimize logistics and planning.",
       icon: (
         <svg className="h-8 w-8 text-neutral-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -12,6 +15,7 @@ export function DataFeatures() {
     },
     {
       title: "Exchange Rates",
+      href: "/money",
       description: "Monitor Bank of Tanzania (BOT) exchange rates. Track spreads, benchmark gaps, and identify opportunities with our advanced analytics and historical comparison tools.",
       icon: (
         <svg className="h-8 w-8 text-neutral-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -22,6 +26,7 @@ export function DataFeatures() {
     },
     {
       title: "Stock Market (DSE)",
+      href: "/dse",
       description: "Get insights into the Dar es Salaam Stock Exchange. Track market capitalization, volume, and individual stock performance with our comprehensive dashboard.",
       icon: (
         <svg className="h-8 w-8 text-neutral-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,6 +37,7 @@ export function DataFeatures() {
     },
     {
       title: "Energy Monitoring",
+      href: "/energy/monitoring",
       description: "Real-time tracking of energy consumption and grid status. Identify anomalies and optimize usage patterns with advanced telemetry data.",
       icon: (
         <svg className="h-8 w-8 text-neutral-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -57,10 +63,11 @@ export function DataFeatures() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
-          {features.map((feature, idx) => (
-            <div 
-              key={idx} 
-              className="group relative flex flex-col justify-between border-2 border-neutral-900 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          {features.map((feature) => (
+            <Link
+              key={feature.href}
+              href={feature.href}
+              className="group relative flex flex-col justify-between border-2 border-neutral-900 bg-white p-8 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
               <div className={`mb-6 inline-flex border-2 border-neutral-900 ${feature.accent} p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}>
                 {feature.icon}
@@ -69,7 +76,13 @@ export function DataFeatures() {
               <p className="text-base font-medium leading-relaxed text-neutral-600">
                 {feature.description}
               </p>
-            </div>
+              <p className="mt-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-700">
+                <span>Open in dashboard</span>
+                <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </p>
+            </Link>
           ))}
         </div>
       </div>
