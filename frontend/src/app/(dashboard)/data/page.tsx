@@ -3,6 +3,8 @@ import { DashboardFeature } from "@/features/dashboard";
 import { buildPageMetadata } from "@/lib/seo";
 import { getDashboardSummaries } from "@/services/dashboard";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = buildPageMetadata({
   title: "Tanzania Data Dashboard",
   description:
