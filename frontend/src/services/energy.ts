@@ -1,4 +1,4 @@
-import { ENERGY_DEFAULTS, API_ENDPOINTS } from "@/lib/constants";
+import { ENERGY_DEFAULTS, API_ENDPOINTS, API_STATIC_REVALIDATE_SECONDS } from "@/lib/constants";
 import type {
   EwuraFuelAvailableMonthRead,
   EwuraFuelDashboardSummaryRead,
@@ -176,11 +176,15 @@ export async function getEnergyHistory(
 }
 
 export async function getEnergyAvailableMonths(): Promise<EwuraFuelAvailableMonthRead[]> {
-  return apiFetch<EwuraFuelAvailableMonthRead[]>(API_ENDPOINTS.energy.ewura.availableMonths);
+  return apiFetch<EwuraFuelAvailableMonthRead[]>(API_ENDPOINTS.energy.ewura.availableMonths, {
+    revalidate: API_STATIC_REVALIDATE_SECONDS,
+  });
 }
 
 export async function getEnergyFilters(): Promise<EwuraFuelFiltersRead> {
-  return apiFetch<EwuraFuelFiltersRead>(API_ENDPOINTS.energy.ewura.filters);
+  return apiFetch<EwuraFuelFiltersRead>(API_ENDPOINTS.energy.ewura.filters, {
+    revalidate: API_STATIC_REVALIDATE_SECONDS,
+  });
 }
 
 export async function getEnergyRollups(
@@ -207,7 +211,9 @@ export async function getEnergyLatestExtremes(
 }
 
 export async function getEnergyInsights(): Promise<EwuraFuelInsightRead[]> {
-  return apiFetch<EwuraFuelInsightRead[]>(API_ENDPOINTS.energy.ewura.insights);
+  return apiFetch<EwuraFuelInsightRead[]>(API_ENDPOINTS.energy.ewura.insights, {
+    revalidate: API_STATIC_REVALIDATE_SECONDS,
+  });
 }
 
 export async function getEnergyPageData(query: EnergyQueryState): Promise<EnergyPageData> {
