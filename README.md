@@ -97,7 +97,7 @@ With **Docker Compose** (this repo):
 - **`celery_beat`** — publishes scheduled tasks.  
 - **`db`** / **`redis`** — must be up; the worker needs the same **`DATABASE_URL`** (and broker URL) as in `.env`.
 
-The default Beat schedule (in `scrapers/src/workers/celery_app.py`) runs EWURA **monthly** (1st of the month, 07:00 UTC). Change the `crontab` there if you need a different cadence.
+The default Beat schedule (in `scrapers/src/workers/celery_app.py`) enqueues EWURA **four times per month** (1st, 3rd, 5th, 8th at 07:00 UTC) because releases are often **after** the 1st. Dedupe skips documents already ingested. Adjust `_EWURA_FUEL_BEAT_DAYS_UTC` there if you need a different cadence.
 
 The EWURA Celery task now auto-retries transient network failures such as `httpx` timeouts with exponential backoff, so a brief EWURA outage on the 1st does not automatically cost the whole month's ingest. You can also raise the scraper HTTP timeout with `HTTP_TIMEOUT_SECONDS` in `scrapers/.env` or your production env file.
 
