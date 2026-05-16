@@ -13,6 +13,8 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["job trends", "salary data", "labour market", "HR analytics"],
 });
 
+export const revalidate = 86400;
+
 export default async function HrPage() {
   const [salaries, jobTrends] = await Promise.all([getSalaries(), getJobTrends()]);
 

@@ -13,6 +13,8 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["medicine prices", "health data", "drug prices", "Tanzania medicine market"],
 });
 
+export const revalidate = 86400;
+
 export default async function MedicinePage() {
   const drugPrices = await getDrugPrices();
 

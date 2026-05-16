@@ -23,12 +23,21 @@ app.conf.update(
     enable_utc=True,
 )
 app.conf.imports = ("src.workers.tasks",)
-# EWURA publishes monthly; first day of month 07:00 UTC (adjust in Beat as needed).
-# FX sources update daily; run overnight UTC with small gaps between sources.
+_EWURA_FUEL_BEAT_DAYS_UTC = (1, 3, 5, 8)
+_EWURA_FUEL_BEAT_HOUR_UTC = 7
+_EWURA_FUEL_BEAT_MINUTE = 0
+
 app.conf.beat_schedule = {
-    "ewura-fuel-monthly": {
-        "task": "scrapers.run_ewura_fuel",
-        "schedule": crontab(day_of_month="1", hour=7, minute=0),
+    **{
+        f"ewura-fuel-check-day-{day:02d}": {
+            "task": "scrapers.run_ewura_fuel",
+            "schedule": crontab(
+                day_of_month=day,
+                hour=_EWURA_FUEL_BEAT_HOUR_UTC,
+                minute=_EWURA_FUEL_BEAT_MINUTE,
+            ),
+        }
+        for day in _EWURA_FUEL_BEAT_DAYS_UTC
     },
     "bot-exchange-rates-nightly": {
         "task": "scrapers.run_bot_exchange_rates",

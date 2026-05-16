@@ -13,6 +13,8 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["living cost", "rent prices", "land prices", "Tanzania housing data"],
 });
 
+export const revalidate = 86400;
+
 export default async function LivingCostPage() {
   const [rentPrices, landPrices] = await Promise.all([getRentPrices(), getLandPrices()]);
 
