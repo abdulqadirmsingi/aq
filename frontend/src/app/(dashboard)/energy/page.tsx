@@ -4,6 +4,8 @@ import { getEnergyPageData } from "@/services/energy";
 import type { EnergyQueryState, EnergyTabId } from "@/features/energy/types";
 import { buildPageMetadata, readQueryValue } from "@/lib/seo";
 
+export const revalidate = 3600;
+
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 interface EnergyPageProps {

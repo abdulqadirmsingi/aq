@@ -13,6 +13,8 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["data pipeline monitoring", "scraper health", "EWURA ingestion"],
 });
 
+export const revalidate = 3600;
+
 export default async function EnergyMonitoringPage() {
   const data = await getEnergyMonitoringPageData();
 
