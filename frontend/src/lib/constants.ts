@@ -77,9 +77,9 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-export const API_DEFAULT_REVALIDATE_SECONDS = 3600;
+export const API_DEFAULT_REVALIDATE_SECONDS = 43200;
 
-export const API_STATIC_REVALIDATE_SECONDS = 86400;
+export const API_STATIC_REVALIDATE_SECONDS = 604800;
 
 export const ENERGY_DEFAULTS = {
   latestPricesLimit: 12,
