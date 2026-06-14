@@ -67,6 +67,10 @@ class ScraperSettings(BaseSettings):
         le=2100,
         description="Ignore EWURA documents newer than this year.",
     )
+    nest_ocds_api_url: str = Field(
+        default="https://nest.go.tz/gateway/nest-data-portal-api/api",
+        description="Base URL for the NeST PPRA OCDS gateway API.",
+    )
     celery_broker_url: str = Field(
         default="redis://localhost:6379/0",
         validation_alias=AliasChoices("CELERY_BROKER_URL", "REDIS_URL"),

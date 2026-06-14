@@ -217,74 +217,88 @@ export async function getEnergyInsights(): Promise<EwuraFuelInsightRead[]> {
 }
 
 export async function getEnergyPageData(query: EnergyQueryState): Promise<EnergyPageData> {
-  const [
-    dashboardSummary,
-    retailLatestPrices,
-    wholesaleLatestPrices,
-    currentYearTrends,
-    retailHistory,
-    wholesaleHistory,
-    filters,
-    availableMonths,
-    rollups,
-    latestExtremes,
-    insights,
-  ] = await Promise.all([
+  const tab = query.activeTab;
+
+  // Always needed: summary cards + filters bar appear on every tab
+  const [dashboardSummary, filters, availableMonths, latestExtremes] = await Promise.all([
     safeRequest(getEnergyDashboardSummary, emptyDashboardSummary()),
-    safeRequest(
-      () =>
-        getEnergyLatestPrices({
-          marketSegment: "retail",
-          fuelType: query.fuelType,
-          locationQuery: query.locationQuery,
-          limit: ENERGY_DEFAULTS.latestPricesLimit,
-          offset: query.retailLatestOffset,
-        }),
-      emptyLatestPricePage(),
-    ),
-    safeRequest(
-      () =>
-        getEnergyLatestPrices({
-          marketSegment: "wholesale",
-          fuelType: query.fuelType,
-          locationQuery: query.locationQuery,
-          limit: ENERGY_DEFAULTS.latestPricesLimit,
-          offset: query.wholesaleLatestOffset,
-        }),
-      emptyLatestPricePage(),
-    ),
-    safeRequest(() => getEnergyCurrentYearTrends({ fuelType: query.fuelType }), []),
-    safeRequest(
-      () =>
-        query.retailHistoryYear
-          ? getEnergyHistory({
-              marketSegment: "retail",
-              year: query.retailHistoryYear,
-              fuelType: query.fuelType,
-              locationQuery: query.locationQuery,
-              limit: ENERGY_DEFAULTS.historyLimit,
-              offset: query.retailHistoryOffset,
-            })
-          : Promise.resolve(emptyObservationPage()),
-      emptyObservationPage(),
-    ),
-    safeRequest(
-      () =>
-        query.wholesaleHistoryYear
-          ? getEnergyHistory({
-              marketSegment: "wholesale",
-              year: query.wholesaleHistoryYear,
-              fuelType: query.fuelType,
-              locationQuery: query.locationQuery,
-              limit: ENERGY_DEFAULTS.historyLimit,
-              offset: query.wholesaleHistoryOffset,
-            })
-          : Promise.resolve(emptyObservationPage()),
-      emptyObservationPage(),
-    ),
     safeRequest(getEnergyFilters, emptyFilters()).then(normalizeEwuraFuelFilters),
     safeRequest(getEnergyAvailableMonths, []),
-    safeRequest(
+    safeRequest(() => getEnergyLatestExtremes(query.fuelType), null),
+  ]);
+
+  // Tab-specific fetches — only load what the active tab actually renders
+  let currentYearTrends: EwuraFuelMonthlyTrendRead[] = [];
+  let retailLatestPrices = emptyLatestPricePage();
+  let wholesaleLatestPrices = emptyLatestPricePage();
+  let retailHistory = emptyObservationPage();
+  let wholesaleHistory = emptyObservationPage();
+  let rollups = emptyRollupPage();
+  let insights: EwuraFuelInsightRead[] = [];
+
+  if (tab === "overview") {
+    currentYearTrends = await safeRequest(
+      () => getEnergyCurrentYearTrends({ fuelType: query.fuelType }),
+      [],
+    );
+  } else if (tab === "retail") {
+    [retailLatestPrices, retailHistory] = await Promise.all([
+      safeRequest(
+        () =>
+          getEnergyLatestPrices({
+            marketSegment: "retail",
+            fuelType: query.fuelType,
+            locationQuery: query.locationQuery,
+            limit: ENERGY_DEFAULTS.latestPricesLimit,
+            offset: query.retailLatestOffset,
+          }),
+        emptyLatestPricePage(),
+      ),
+      safeRequest(
+        () =>
+          query.retailHistoryYear
+            ? getEnergyHistory({
+                marketSegment: "retail",
+                year: query.retailHistoryYear,
+                fuelType: query.fuelType,
+                locationQuery: query.locationQuery,
+                limit: ENERGY_DEFAULTS.historyLimit,
+                offset: query.retailHistoryOffset,
+              })
+            : Promise.resolve(emptyObservationPage()),
+        emptyObservationPage(),
+      ),
+    ]);
+  } else if (tab === "wholesale") {
+    [wholesaleLatestPrices, wholesaleHistory] = await Promise.all([
+      safeRequest(
+        () =>
+          getEnergyLatestPrices({
+            marketSegment: "wholesale",
+            fuelType: query.fuelType,
+            locationQuery: query.locationQuery,
+            limit: ENERGY_DEFAULTS.latestPricesLimit,
+            offset: query.wholesaleLatestOffset,
+          }),
+        emptyLatestPricePage(),
+      ),
+      safeRequest(
+        () =>
+          query.wholesaleHistoryYear
+            ? getEnergyHistory({
+                marketSegment: "wholesale",
+                year: query.wholesaleHistoryYear,
+                fuelType: query.fuelType,
+                locationQuery: query.locationQuery,
+                limit: ENERGY_DEFAULTS.historyLimit,
+                offset: query.wholesaleHistoryOffset,
+              })
+            : Promise.resolve(emptyObservationPage()),
+        emptyObservationPage(),
+      ),
+    ]);
+  } else if (tab === "rollups") {
+    rollups = await safeRequest(
       () =>
         getEnergyRollups({
           fuelType: query.fuelType,
@@ -292,10 +306,10 @@ export async function getEnergyPageData(query: EnergyQueryState): Promise<Energy
           offset: query.rollupsOffset,
         }),
       emptyRollupPage(),
-    ),
-    safeRequest(() => getEnergyLatestExtremes(query.fuelType), null),
-    safeRequest(getEnergyInsights, []),
-  ]);
+    );
+  } else if (tab === "insights") {
+    insights = await safeRequest(getEnergyInsights, []);
+  }
 
   return {
     dashboardSummary,

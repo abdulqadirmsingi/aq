@@ -3,7 +3,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-const PAGE_CACHE = "public, s-maxage=3600, stale-while-revalidate=86400";
+const PAGE_CACHE = "public, s-maxage=43200, stale-while-revalidate=604800";
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
         // OG images are expensive edge renders — cache them for 24h at CDN and browser.
         source: "/api/og(.*)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800" },
+          { key: "Cache-Control", value: "public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000" },
         ],
       },
     ];
