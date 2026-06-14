@@ -9,7 +9,7 @@ import type {
 } from "@/features/money/types";
 import { buildPageMetadata, readQueryValue } from "@/lib/seo";
 
-export const revalidate = 3600;
+export const revalidate = 43200;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

@@ -11,7 +11,7 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["DSE", "Tanzania stock market", "Dar es Salaam Stock Exchange", "TZS stocks"],
 });
 
-export const revalidate = 3600;
+export const revalidate = 43200;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

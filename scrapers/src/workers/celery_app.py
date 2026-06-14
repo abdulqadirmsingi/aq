@@ -56,6 +56,11 @@ app.conf.beat_schedule = {
         # 13:00 UTC = ~16:00 EAT, after DSE closes at 15:00 EAT
         "schedule": crontab(hour=13, minute=0),
     },
+    "nest-procurement-daily": {
+        "task": "scrapers.run_nest_procurement",
+        # 04:00 UTC = ~07:00 EAT — after OCDS daily refresh, before business hours
+        "schedule": crontab(hour=4, minute=0),
+    },
 }
 
 

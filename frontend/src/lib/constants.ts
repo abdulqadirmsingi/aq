@@ -4,6 +4,7 @@ export const ROUTES = {
   energyMonitoring: "/energy/monitoring",
   money: "/money",
   dse: "/dse",
+  procurement: "/procurement",
   livingCost: "/living-cost",
   medicine: "/medicine",
   hr: "/hr",
@@ -16,6 +17,7 @@ export const NAV_ITEMS: { key: RouteKey; translationKey: string; icon: string; d
   { key: "energy", translationKey: "nav.energy", icon: "zap" },
   { key: "money", translationKey: "nav.money", icon: "banknote" },
   { key: "dse", translationKey: "nav.dse", icon: "trending-up" },
+  { key: "procurement", translationKey: "nav.procurement", icon: "briefcase" },
   { key: "livingCost", translationKey: "nav.livingCost", icon: "home", disabled: true },
   { key: "medicine", translationKey: "nav.medicine", icon: "pill", disabled: true },
   { key: "hr", translationKey: "nav.hr", icon: "users", disabled: true },
@@ -61,6 +63,10 @@ export const API_ENDPOINTS = {
     latest: "/money/stocks/dse/latest",
     history: "/money/stocks/dse/history",
   },
+  procurement: {
+    tenders: "/procurement/tenders",
+    filters: "/procurement/tenders/filters",
+  },
   money: {
     exchangeRates: {
       dashboardSummary: "/money/exchange-rates/dashboard-summary",
@@ -77,9 +83,9 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-export const API_DEFAULT_REVALIDATE_SECONDS = 3600;
+export const API_DEFAULT_REVALIDATE_SECONDS = 43200;
 
-export const API_STATIC_REVALIDATE_SECONDS = 86400;
+export const API_STATIC_REVALIDATE_SECONDS = 604800;
 
 export const ENERGY_DEFAULTS = {
   latestPricesLimit: 12,
