@@ -5,6 +5,7 @@ from app.modules.energy.models.fuel import EnergyDetail
 from app.modules.hr.models.salary import SalaryDetail
 from app.modules.money.models.exchange_rate import ExchangeRateDetail
 from app.modules.money.models.stock import StockPriceDetail
+from app.modules.procurement.models.tender import ProcurementTender
 
 __all__ = [
     "DataCategory",
@@ -14,6 +15,7 @@ __all__ = [
     "IngestionLog",
     "Location",
     "Metric",
+    "ProcurementTender",
     "SalaryDetail",
     "ScraperRun",
     "Source",

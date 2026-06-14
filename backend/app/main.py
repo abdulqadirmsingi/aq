@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.modules.energy.routers.fuel_router import router as fuel_router
 from app.modules.money.routers.money_router import router as money_router
+from app.modules.procurement.routers.tender_router import router as procurement_router
 
 
 def create_app() -> FastAPI:
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
 
     application.include_router(fuel_router, prefix="/api/v1")
     application.include_router(money_router, prefix="/api/v1")
+    application.include_router(procurement_router, prefix="/api/v1")
 
     return application
 

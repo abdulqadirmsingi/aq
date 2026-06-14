@@ -41,6 +41,12 @@ class ScraperHttpClient:
         return response.text
 
     @http_retry()
+    def get_json(self, url: str) -> object:
+        response = self._client.get(url)
+        response.raise_for_status()
+        return response.json()
+
+    @http_retry()
     def get_bytes_bounded(self, url: str, max_bytes: int) -> bytes:
         """Stream response body; raises if ``max_bytes`` is exceeded."""
         with self._client.stream("GET", url) as response:

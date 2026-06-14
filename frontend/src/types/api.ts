@@ -1,4 +1,5 @@
 export type { ApiPage, ApiPageMeta } from "./api/common";
+export type { TenderFiltersRead, TenderPage, TenderRead } from "./api/procurement";
 export type { DseDashboardSummaryRead, DseStockPage, DseStockRead } from "./api/dse";
 export type {
   EwuraFuelAvailableMonthRead,

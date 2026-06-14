@@ -9,6 +9,7 @@ from src.domains.money.bot_exchange_rate_scraper import BotExchangeRateScraper
 from src.domains.money.crdb_exchange_rate_scraper import CrdbExchangeRateScraper
 from src.domains.money.itrust_stock_scraper import ItrustStockScraper
 from src.domains.money.nmb_exchange_rate_scraper import NmbExchangeRateScraper
+from src.domains.procurement.scraper import NestProcurementScraper
 from src.workers.celery_app import app
 
 
@@ -72,6 +73,23 @@ def run_nmb_exchange_rate_scraper() -> dict[str, int | str | None]:
 def run_itrust_stock_scraper() -> dict[str, int | str | None]:
     """Fetch the iTrust DSE market-summary API and persist daily OHLCV records."""
     scraper = ItrustStockScraper()
+    try:
+        return scraper.run()
+    finally:
+        scraper.close()
+
+
+@app.task(
+    name="scrapers.run_nest_procurement",
+    autoretry_for=(httpx.TimeoutException, httpx.TransportError),
+    retry_backoff=300,
+    retry_backoff_max=3600,
+    retry_jitter=True,
+    max_retries=3,
+)
+def run_nest_procurement_scraper() -> dict[str, int]:
+    """Fetch all OCDS records from data.nest.go.tz and upsert procurement_tenders."""
+    scraper = NestProcurementScraper()
     try:
         return scraper.run()
     finally:
